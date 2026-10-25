@@ -6,7 +6,7 @@ export class Jobs{
   constructor({camera,hands,fx,hud,eco,forest,mushrooms}){
     Object.assign(this,{camera,hands,fx,hud,eco});
     this.trees=forest.userData.trees;this.nodes=mushrooms.userData.nodes;
-    this.felled=[];this.falling=[];this.t=0;this.tool=0;this.target=null;this.hits=0;this.sweep=0;this.swing=0;this.regrow=[];
+    this.felled=[];this.falling=[];this.t=0;this.tool=0;this.target=null;this.hits=0;this.lastHit=0;this.swing=0;this.regrow=[];
     this._m=new THREE.Matrix4();this._v=new THREE.Vector3();this._d=new THREE.Vector3();
   }
   fwd(){return this.camera.getWorldDirection(this._d).clone()}
@@ -41,35 +41,27 @@ export class Jobs{
     this.hud.toast(glow?"Found a rare Glowcap!":"Picked a mushroom",glow?"#4fe8ff":"#ff9a8a");
     return true;
   }
-  /** Click with the axe equipped. */
+  /** Click with the axe equipped: chop the tree in front of you. No timing, just keep chopping. */
   press(px,pz){
     if(this.tool!==1||this.hud.marketOpen)return;
+    if(!this.eco.tools.axe){this.hud.toast("You need an axe. Buy one at the market.","#ff7b6b");return}
     this.swing=1;
     const tg=this.nearestTree(px,pz);
     if(!tg){this.hud.toast("Walk up to a tree and face it.");return}
-    const lvl=this.eco.up.axe,hw=.13+lvl*.03,c=this.zoneC;
-    const inZone=Math.abs(this.sweep-c)<hw;
     this.hud.hint("");
     if(this.target!==tg.o){this.target=tg.o;this.hits=0}
     const hp=new THREE.Vector3(tg.o[0],tg.o[1]+1.8,tg.o[2]);
-    if(inZone){
-      this.hits++;
-      this.fx.pixels.emit(hp,16,CHIP,{speed:3.4,up:4.5,size:.14});
-      if(this.hits>=this.need){this.fell(tg,px,pz);this.target=null;this.hits=0}
-      else this.hud.toast(`Good hit ${this.hits}/${this.need}`,"#ffd23a");
-    }else{
-      this.fx.pixels.emit(hp,5,[0xaaaaaa,0xffffff],{speed:2,up:2,size:.07});
-      this.hits=Math.max(0,this.hits-0);this.hud.toast("Glancing blow. Time the swing.");
-    }
+    this.hits++;this.lastHit=this.t;
+    this.fx.pixels.emit(hp,14,CHIP,{speed:3.2,up:4.2,size:.13});
+    if(this.hits>=this.need){this.fell(tg,px,pz);this.target=null;this.hits=0}
   }
-  get need(){return 3-(this.eco.up.axe>=2?1:0)}
-  get zoneC(){return .5+.22*Math.sin(this.t*.35)}
+  get need(){return 4-this.eco.up.axe2}
   fell(tg,px,pz){
     const {g,i,o}=tg;o.gone=true;
     const away=new THREE.Vector3(o[0]-px,0,o[2]-pz).normalize();
     const m0=new THREE.Matrix4();g.im.getMatrixAt(i,m0);
     this.falling.push({g,i,o,m0,away,t:0});
-    const n=2+((Math.random()*2)|0)+this.eco.up.axe;let got=0;
+    const n=2+((Math.random()*2)|0)+this.eco.up.axe2;let got=0;
     for(let k=0;k<n;k++)if(this.eco.addItem(g.kind))got++;
     this.hud.toast(got?`Timber! +${got} ${g.kind==="oak_log"?"oak":"pine"} log${got>1?"s":""}`:"Bag full! The logs are left behind.",got?"#ffd23a":"#ff7b6b");
     this.regrow.push({t:this.t+90,kind:"t",g,i,o,m0});
@@ -95,12 +87,11 @@ export class Jobs{
       else{r.n.im.setMatrixAt(r.i,r.n.list[r.i].m);r.n.im.instanceMatrix.needsUpdate=true;r.n.list[r.i].alive=true}
       this.regrow.splice(k,1);
     }
-    // sweep marker and prompt
-    this.sweep=.5+.5*Math.sin(this.t*2.6);
     this.swing=Math.max(0,this.swing-dt*3.2);
-    if(this.tool===1&&!this.hud.marketOpen){
+    if(this.target&&this.t-this.lastHit>6){this.target=null;this.hits=0}
+    if(this.tool===1&&!this.hud.marketOpen&&this.eco.tools.axe){
       const tg=this.nearestTree(px,pz);
-      if(tg){const hw=.13+this.eco.up.axe*.03;this.hud.chop(true,{name:tg.g.kind==="oak_log"?"Oak tree":"Pine tree",lo:Math.max(0,this.zoneC-hw),hi:Math.min(1,this.zoneC+hw),pos:this.sweep,text:`Click when the marker is in the green. Hits ${tg.o===this.target?this.hits:0}/${this.need}`})}
+      if(tg)this.hud.chop(true,{name:tg.g.kind==="oak_log"?"Oak tree":"Pine tree",pos:(tg.o===this.target?this.hits:0)/this.need,text:`Click to chop (${tg.o===this.target?this.hits:0}/${this.need})`});
       else this.hud.chop(false);
     }else this.hud.chop(false);
   }

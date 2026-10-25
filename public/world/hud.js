@@ -1,4 +1,4 @@
-import {ALL,UPGRADES,byId} from "./economy.js";
+import {ALL,UPGRADES,TOOLS,GOALS,byId} from "./economy.js";
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap');
 #hud{position:fixed;inset:0;pointer-events:none;font-family:'Alegreya Sans',system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55)}
@@ -50,26 +50,32 @@ const CSS=`
 #market button:hover:not(:disabled){background:#3b6197}
 .urow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.12)}
 .urow div small{display:block;opacity:.75;font-size:14px}
+#bpanel{position:absolute;right:14px;top:70px;width:210px;display:none;background:rgba(32,52,84,.85);border:2px solid #f08a3c;border-radius:6px;padding:8px 10px;font-size:16px}
+#bpanel .row{display:flex;justify-content:space-between;padding:2px 6px;border-radius:3px}
+#bpanel .row.sel{background:#f08a3c;color:#1b2740;text-shadow:none;font-weight:700}
+#bpanel small{display:block;opacity:.85;margin-top:6px;line-height:1.3;font-size:14px}
+#saved{position:absolute;right:16px;bottom:14px;font-size:14px;opacity:0;transition:opacity .5s}
 #fade{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .3s}
 `;
 const ICON={
   rod:`<svg viewBox="0 0 52 52"><path d="M8 46 L40 8" stroke="#c9d6e6" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="38" r="5" fill="#8fa3bb"/><path d="M40 8 q8 12 2 30" stroke="#e8f0ff" stroke-width="1.5" fill="none"/></svg>`,
   axe:`<svg viewBox="0 0 52 52"><path d="M12 44 L36 12" stroke="#c9a46a" stroke-width="4" stroke-linecap="round"/><path d="M30 8 q14 2 14 14 q-8 -2 -14 6z" fill="#cfd8e3"/></svg>`,
+  build:`<svg viewBox="0 0 52 52"><path d="M8 26 L26 10 L44 26" stroke="#f08a3c" stroke-width="4" fill="none" stroke-linejoin="round"/><rect x="13" y="26" width="26" height="16" fill="#c9a46a"/><rect x="22" y="31" width="8" height="11" fill="#6b4a26"/></svg>`,
   bait:`<svg viewBox="0 0 52 52"><path d="M12 36 q14 -26 30 -14 q-6 20 -30 14z" fill="#6fd070"/><path d="M12 36 l-6 6" stroke="#6fd070" stroke-width="3"/></svg>`
 };
 export function createHud(){
   const st=document.createElement("style");st.textContent=CSS;document.head.appendChild(st);
   const root=document.createElement("div");root.id="hud";
   root.innerHTML=`<div id="hint" class="hbox"></div><div id="toasts"></div><div id="cross"></div>
-  <div id="bite">!</div><div id="chop"><div class="name" id="cName">Chop</div><div class="track"><div class="zone" id="cZone"></div><div class="mark" id="cMark"></div></div><small id="cHits"></small></div><div id="prompt" class="hbox"></div>
+  <div id="bite">!</div><div id="chop"><div class="name" id="cName">Chop</div><div class="prog"><i id="cProg"></i></div><small id="cHits"></small></div><div id="prompt" class="hbox"></div>
   <div id="reel"><div class="name" id="rName"></div><div class="track"><div class="zone" id="rZone"></div><div class="mark" id="rMark"></div></div><div class="prog"><i id="rProg"></i></div><small>Hold the mouse to reel. Let go to ease off. Keep the marker in the green.</small></div>
   <div id="money"><b id="mMoney">$0</b><span id="mBag"></span></div>
-  <div id="bar"></div>`;
+  <div id="bar"></div><div id="bpanel"></div><div id="saved">Progress saved</div>`;
   document.body.appendChild(root);
   const market=document.createElement("div");market.id="market";document.body.appendChild(market);
   const fade=document.createElement("div");fade.id="fade";document.body.appendChild(fade);
   const $=id=>root.querySelector("#"+id);
-  const slots=[{k:1,name:"Rod",svg:ICON.rod},{k:2,name:"Axe",svg:ICON.axe},{k:3,name:""},{k:4,name:""}];
+  const slots=[{k:1,name:"Rod",svg:ICON.rod},{k:2,name:"Axe",svg:ICON.axe},{k:3,name:"Build",svg:ICON.build},{k:4,name:"Hands"}];
   const bar=$("bar");
   slots.forEach((s,i)=>{const d=document.createElement("div");d.className="slot"+(i===0?" sel":"");d.innerHTML=`<i>${s.k}</i>${s.svg||""}<em>${s.name}</em>`;bar.appendChild(d)});
   let hintT=0,lastMoney=0;
@@ -81,7 +87,10 @@ export function createHud(){
     bite(on){$("bite").style.display=on?"block":"none"},
     reel(on,o){const r=$("reel");r.style.display=on?"block":"none";if(!on)return;
       $("rName").textContent=o.name;$("rZone").style.left=(o.lo*100)+"%";$("rZone").style.width=((o.hi-o.lo)*100)+"%";$("rMark").style.left=(o.tension*100)+"%";$("rProg").style.width=(o.progress*100)+"%"},
-    chop(on,o){const c=$("chop");c.style.display=on?"block":"none";if(!on)return;$("cName").textContent=o.name;$("cZone").style.left=(o.lo*100)+"%";$("cZone").style.width=((o.hi-o.lo)*100)+"%";$("cMark").style.left=(o.pos*100)+"%";$("cHits").textContent=o.text},
+    chop(on,o){const c=$("chop");c.style.display=on?"block":"none";if(!on)return;$("cName").textContent=o.name;$("cProg").style.width=(o.pos*100)+"%";$("cHits").textContent=o.text},
+    buildPanel(o){const p=$("bpanel");if(!o){p.style.display="none";return}p.style.display="block";
+      p.innerHTML=o.list.map(r=>`<div class="row${r.sel?" sel":""}"><span>${r.name}</span><span>$${r.cost}</span></div>`).join("")+`<small>Click: place &nbsp; Right-click: remove<br>Scroll or [ ]: change piece<br>R: rotate &nbsp; G: snap is <b>${o.snap?"ON":"OFF"}</b></small>`},
+    saved(){const e=$("saved");e.style.opacity=.9;clearTimeout(api._st);api._st=setTimeout(()=>e.style.opacity=0,1400)},
     select(i){[...bar.children].forEach((c,k)=>c.classList.toggle("sel",k===i))},
     flash(){fade.style.opacity=.35;setTimeout(()=>fade.style.opacity=0,60)},
     marketOpen:false,
@@ -91,12 +100,15 @@ export function createHud(){
         const rows=ALL.map(f=>{const t=eco.trend(f.id),n=eco.bag.filter(x=>x.id===f.id).length;
           return `<tr><td>${f.name}</td><td>$${eco.price(f.id)}</td><td class="${t>0?"up":t<0?"down":"flat"}">${t>0?"▲":t<0?"▼":"–"}</td><td>${n?"x"+n:""}</td></tr>`}).join("");
         const total=eco.bag.reduce((a,f)=>a+eco.value(f),0);
-        const ups=UPGRADES.map(u=>{const c=eco.upgradeCost(u.id);
-          return `<div class="urow"><div><b>${u.name}</b> (${eco.up[u.id]}/${u.max})<small>${u.desc}</small></div><button data-up="${u.id}" ${c==null||eco.money<c?"disabled":""}>${c==null?"Maxed":"$"+c}</button></div>`}).join("");
-        market.innerHTML=`<div class="panel"><h2>Market</h2><div class="sub">Prices move on their own and drop when everyone sells the same fish. You have $${eco.money.toLocaleString()}.</div>
+        const tools=TOOLS.map(t=>{const c=eco.toolCost(t.id);return `<div class="urow"><div><b>${t.name}</b><small>${t.desc}</small></div><button data-tool="${t.id}" ${c==null||eco.money<c?"disabled":""}>${c==null?"Owned":"$"+c}</button></div>`}).join("");
+        const ups=UPGRADES.map(u=>{const c=eco.upgradeCost(u.id),ok=eco.canUpgrade(u.id);
+          return `<div class="urow"><div><b>${u.name}</b> (${eco.up[u.id]}/${u.max})<small>${ok?u.desc:"Needs the "+(u.needs==="rod"?"fishing rod":"axe")}</small></div><button data-up="${u.id}" ${c==null||eco.money<c||!ok?"disabled":""}>${c==null?"Maxed":"$"+c}</button></div>`}).join("");
+        const goals=`<div class="urow"><div><b>House plot</b><small>${eco.myPlot!=null?"You own plot "+(eco.myPlot+1)+". Press 3 to build.":"Look for a FOR SALE sign. Prices rise as neighbours move in: now about $"+eco.plotPrice(0).toLocaleString()}</small></div><span>${eco.myPlot!=null?"Owned":""}</span></div><div class="urow"><div><b>Boat</b><small>Opens the next island. Coming soon.</small></div><span>$${GOALS.boat.toLocaleString()}</span></div>`;
+        market.innerHTML=`<div class="panel"><h2>Market</h2><div class="sub">Prices move on their own and drop when you flood the market with one thing. You have $${eco.money.toLocaleString()}.</div>
         <div class="cols"><div><table>${rows}</table><p style="margin:12px 0 0"><button id="sellAll" ${eco.bag.length?"":"disabled"}>Sell all (${eco.bag.length}) for $${total}</button></p></div>
-        <div><h3 style="margin:0 0 6px;font:700 20px Alegreya,serif">Gear</h3>${ups}</div></div>
+        <div><h3 style="margin:0 0 6px;font:700 20px Alegreya,serif">Tools</h3>${tools}<h3 style="margin:12px 0 6px;font:700 20px Alegreya,serif">Upgrades</h3>${ups}<h3 style="margin:12px 0 6px;font:700 20px Alegreya,serif">Goals</h3>${goals}</div></div>
         <p style="margin:14px 0 0;text-align:right"><button id="mClose">Close (E)</button></p></div>`;
+        market.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{if(eco.buyTool(b.dataset.tool)){onChange("bought",b.dataset.tool);draw()}});
         market.querySelector("#sellAll").onclick=()=>{const t=eco.sellAll();onChange("sold",t);draw()};
         market.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{if(eco.buy(b.dataset.up)){onChange("bought",b.dataset.up);draw()}});
         market.querySelector("#mClose").onclick=api.closeMarket;

@@ -4,13 +4,16 @@ import {buildSky,buildClouds,SUN_DIR,HAZE} from "./sky.js";
 import {buildWater} from "./water.js";
 import {buildForest,buildDock,buildStall,buildMushrooms} from "./props.js";
 import {Pixels,Rings} from "./fx.js";
-import {Economy} from "./economy.js";
+import {Economy,byId as ITEMS} from "./economy.js";
 import {createHud} from "./hud.js";
 import {createHands} from "./hands.js";
 import {Fishing} from "./fishing.js";
 import {createPost} from "./post.js";
 import {Jobs} from "./jobs.js";
 import {mulberry} from "./noise.js";
+import {Pickups} from "./pickups.js";
+import {Town} from "./town.js";
+import {Builder} from "./build.js";
 
 const canvas=document.getElementById("c");
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:"high-performance"});
@@ -56,13 +59,28 @@ const sc=sun.shadow.camera;sc.left=-90;sc.right=90;sc.top=90;sc.bottom=-90;sc.ne
 scene.add(sun,sun.target);
 
 const fx={pixels:new Pixels(scene),rings:new Rings(scene)};
-const eco=new Economy(),hud=createHud(),hands=createHands(camera);
+const eco=new Economy(mulberry(Date.now()&0xffff)),hud=createHud(),hands=createHands(camera);
 const fishing=new Fishing({scene,camera,hands,fx,hud,eco});fishing.onDock=onDock;
 const jobs=new Jobs({camera,hands,fx,hud,eco,forest,mushrooms});
-function setTool(i){if(fishing.busy&&i!==0){hud.toast("Finish fishing first.");return}jobs.tool=i;hands.setTool(i);hud.select(i);if(i===1)hud.hint("Walk up to a tree, face it and click when the marker is in the green. Hit it three times. Press E near mushrooms to pick them.","Logging");else hud.hint("Aim at open water and click to cast.","Fishing")}
+const town=new Town({scene,eco,forest,mushrooms,stallPos,rand:mulberry(WORLD.seed+77),fx});
+const pickups=new Pickups({scene,rand:mulberry(Date.now()&0xfffff),fx,avoid:(x,z)=>!!town.plotAt(x,z,4)||Math.hypot(x-stallPos.x,z-stallPos.z)<8||onDock(x,z)});
+const builder=new Builder({scene,camera,eco,hud,town,fx});
+const HINTS=[
+  ()=>eco.tools.rod?"Aim at open water and click to cast. Click again when the float dips.":"You don't own a rod yet. Buy one at the market stall.",
+  ()=>eco.tools.axe?"Face a tree and click to chop it. Keep clicking until it falls.":"You don't own an axe yet. Buy one at the market stall.",
+  ()=>"Click to place, right-click to remove, scroll to change the piece, R to rotate, G toggles the snap grid.",
+  ()=>"Walk up to things on the ground and press E to pick them up."
+];
+const TITLES=["Fishing","Logging","Building","Hands"];
+function setTool(i){
+  if(fishing.busy&&i!==0){hud.toast("Finish fishing first.");return}
+  if(i===2&&eco.myPlot==null){hud.toast("Buy a house plot first. Look for a FOR SALE sign.","#ff7b6b");return}
+  jobs.tool=i;hands.setTool(i);hud.select(i);builder.setActive(i===2);hud.hint(HINTS[i](),TITLES[i]);
+}
 function refreshMoney(){hud.money(eco.money,eco.bag.length,eco.capacity)}
 refreshMoney();
-hud.hint("Aim at open water and click to cast. Walk to the market stall and press E to sell. WASD to move, Shift to run, arrow keys to look.","Getting started");
+jobs.tool=3;hands.setTool(3);hud.select(3);
+hud.hint(eco.loaded?"Welcome back. Your progress was saved. Walk up to things on the ground and press E to pick them up, then sell them at the market stall.":"You start with nothing. Walk along the beach and press E to pick up shells, bottles and driftwood, then sell them at the market stall near the dock. WASD to move, Shift to run.","Side Hustle");
 // camera: shots for review, or free fly
 const q=new URLSearchParams(location.search),shot=q.get("shot"),FIXED=q.has("fixed");
 if(q.has("lq")){renderer.shadowMap.enabled=false;renderer.setPixelRatio(1)}
@@ -87,29 +105,62 @@ addEventListener("keydown",e=>{keys[e.code]=true;
   if(e.code==="Escape"&&hud.marketOpen)closeMarket();
   if(e.code==="Digit1")setTool(0);
   if(e.code==="Digit2")setTool(1);
+  if(e.code==="Digit3")setTool(2);
+  if(e.code==="Digit4")setTool(3);
+  if(builder.active){
+    if(e.code==="KeyR")builder.rotate();
+    if(e.code==="KeyG")builder.toggleSnap();
+    if(e.code==="BracketRight")builder.cycle(1);
+    if(e.code==="BracketLeft")builder.cycle(-1);
+  }
   if(["Space","ArrowUp","ArrowDown"].includes(e.code))e.preventDefault();});
 addEventListener("keyup",e=>keys[e.code]=false);
 let noLock=false;
 const look=(mx,my,k)=>{player.yaw-=mx*k;player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch-my*k))};
 addEventListener("mousemove",e=>{if(hud.marketOpen)return;if(document.pointerLockElement===canvas)look(e.movementX,e.movementY,.0023);else if(noLock&&e.target===canvas)look(e.movementX,e.movementY,.0023)});
+addEventListener("contextmenu",e=>e.preventDefault());
+addEventListener("wheel",e=>{if(builder.active)builder.cycle(e.deltaY>0?1:-1)},{passive:true});
 canvas.addEventListener("mousedown",e=>{
-  if(shot||e.button!==0||hud.marketOpen)return;
+  if(shot||hud.marketOpen)return;
+  if(e.button===2){if(builder.active)builder.remove();return}
+  if(e.button!==0)return;
   if(document.pointerLockElement!==canvas&&!noLock){try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{noLock=true})}catch(err){noLock=true}}
-  if(jobs.tool===0)fishing.press();else jobs.press(player.x,player.z);
+  if(jobs.tool===0)fishing.press();else if(jobs.tool===1)jobs.press(player.x,player.z);else if(jobs.tool===2)builder.place();
 });
 addEventListener("mouseup",()=>fishing.release());
 function closeMarket(){hud.closeMarket();eco.save()}
 function nearStall(){return Math.hypot(player.x-stallPos.x,player.z-stallPos.z)<6.5}
+function lookDir(){const d=camera.getWorldDirection(new THREE.Vector3());return d}
+function nearbyPickup(){const d=lookDir();return pickups.nearest(player.x,player.z,d.x,d.z)}
+function openMarket(){
+  if(document.exitPointerLock)document.exitPointerLock();
+  hud.openMarket(eco,(kind,v)=>{
+    if(kind==="sold"){hud.toast(`Sold everything for $${v}`,"#ffd23a");fx.pixels.emit(new THREE.Vector3(stallPos.x,stallPos.y+2,stallPos.z).addScaledVector(new THREE.Vector3(Math.sin(dockRot),0,Math.cos(dockRot)),1.2),40,[0xffd23a,0xffb52e,0xfff0a0],{speed:4,up:6,size:.22,life:1.3,gravity:10})}
+    else{hud.toast(v==="rod"?"You bought a rod! Press 1, then cast at open water.":v==="axe"?"You bought an axe! Press 2 and chop a tree.":"Bought.","#6ee08a");if(v==="rod"||v==="axe")setTool(v==="rod"?0:1)}
+    refreshMoney();
+  });
+}
 function interact(){
   if(hud.marketOpen){closeMarket();return}
-  if(!fishing.busy&&jobs.pickMushroom(player.x,player.z))return;
-  if(nearStall()&&!fishing.busy){
-    if(document.exitPointerLock)document.exitPointerLock();
-    hud.openMarket(eco,(kind,v)=>{
-      if(kind==="sold"){hud.toast(`Sold your catch for $${v}`,"#ffd23a");fx.pixels.emit(new THREE.Vector3(stallPos.x,stallPos.y+2,stallPos.z).addScaledVector(new THREE.Vector3(Math.sin(dockRot),0,Math.cos(dockRot)),1.2),40,[0xffd23a,0xffb52e,0xfff0a0],{speed:4,up:6,size:.22,life:1.3,gravity:10})}
-      else hud.toast("Upgrade bought","#6ee08a");
-      refreshMoney();
-    });
+  if(fishing.busy)return;
+  const pk=nearbyPickup();
+  if(pk){
+    const id=pk.id;
+    if(eco.addItem(id)){pickups.take(pk);const G=ITEMS[id];hud.toast(`Picked up ${G.name} (worth about $${eco.price(id)})`,G.kind==="rare"?"#4fe8ff":"#ffd23a")}
+    else hud.toast("Bag full! Sell at the market stall.","#ff7b6b");
+    return;
+  }
+  if(jobs.pickMushroom(player.x,player.z))return;
+  if(nearStall()){openMarket();return}
+  const sp=town.nearestSign(player.x,player.z);
+  if(sp){
+    const owner=eco.house.owners[sp.id];
+    if(!owner){
+      if(eco.myPlot!=null)hud.toast("You already own a plot.");
+      else if(eco.buyPlot(sp.id)){town.refresh();builder.load();hud.toast("You bought a plot! Press 3 to start building.","#6ee08a");setTool(2);refreshMoney()}
+      else hud.toast(`That plot costs $${eco.plotPrice(sp.id).toLocaleString()}. Land gets pricier as neighbours move in!`,"#ff7b6b");
+    }else if(owner==="me")hud.toast("This is your plot. Press 3 to build.");
+    else hud.toast("A neighbour lives here.");
   }
 }
 
@@ -121,20 +172,30 @@ function frame(now){
   if(shot&&SHOTS[shot]){const s=SHOTS[shot]();camera.position.set(...s.p);camera.lookAt(...s.look)}
   else{
     player.yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*1.8*dt;player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch+((keys.ArrowUp?1:0)-(keys.ArrowDown?1:0))*1.4*dt));
-    const f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),sp=(keys.ShiftLeft?9:5)*dt*(fishing.state==="reeling"?.3:1)*(hud.marketOpen?0:1);
+    const f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),sp=(keys.ShiftLeft?9:5)*eco.speedMul*dt*(fishing.state==="reeling"?.3:1)*(hud.marketOpen?0:1);
     const mx=(-Math.sin(player.yaw)*f+Math.cos(player.yaw)*r)*sp,mz=(-Math.cos(player.yaw)*f-Math.sin(player.yaw)*r)*sp;
-    const ok=(x,z)=>onDock(x,z)||heightAt(x,z)>-.9;
+    const ok=(x,z)=>(onDock(x,z)||heightAt(x,z)>-.9)&&!builder.blocked(x,z);
     if(ok(player.x+mx,player.z+mz)){player.x+=mx;player.z+=mz}else if(ok(player.x+mx,player.z)){player.x+=mx}else if(ok(player.x,player.z+mz)){player.z+=mz}
-    fishing.walk=Math.min(1,Math.hypot(mx,mz)/(dt*9));
-    let gh=Math.max(heightAt(player.x,player.z),.2);if(onDock(player.x,player.z))gh=Math.max(gh,.72);
+    fishing.walk=Math.min(1,Math.hypot(mx,mz)/(dt*9*eco.speedMul));
+    let gh=Math.max(heightAt(player.x,player.z),.2);if(onDock(player.x,player.z))gh=Math.max(gh,.72);const pp=town.plotAt(player.x,player.z);if(pp)gh=Math.max(gh,pp.y);
     player.y+=(gh+1.7-player.y)*Math.min(1,dt*12);
     camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
   }
   camera.updateMatrixWorld(true);
-  fishing.update(dt);jobs.update(dt,player.x,player.z);hands.swing(jobs.swing);fx.pixels.update(dt);fx.rings.update(dt);
-  if(eco.tick(dt)){hud.toast("The market prices shifted.");if(hud.marketOpen&&hud._redraw)hud._redraw()}
-  const mu=!fishing.busy&&!hud.marketOpen?jobs.nearestMushroom(player.x,player.z):null;
-  hud.prompt(mu?(mu.n.kind==="glowcap"?"[E] Pick the glowing mushroom":"[E] Pick mushroom"):(!fishing.busy&&!hud.marketOpen&&nearStall()?"[E] Open the market":null));
+  fishing.update(dt);jobs.update(dt,player.x,player.z);pickups.update(dt,player.x,player.z);town.update(dt);builder.update();hands.swing(jobs.swing);fx.pixels.update(dt);fx.rings.update(dt);
+  for(const ev of eco.tick(dt)){
+    if(ev.type==="prices"){town.refresh();if(hud.marketOpen&&hud._redraw)hud._redraw()}
+    else{hud.toast(ev.msg,ev.type==="npc"?"#ffb36b":"#9ad4f0");town.refresh()}
+  }
+  let pr=null;
+  if(!fishing.busy&&!hud.marketOpen&&jobs.tool!==2){
+    const pk=nearbyPickup(),mu=jobs.nearestMushroom(player.x,player.z),sp=town.nearestSign(player.x,player.z);
+    if(pk)pr=`[E] Pick up ${ITEMS[pk.id].name}`;
+    else if(mu)pr=mu.n.kind==="glowcap"?"[E] Pick the glowing mushroom":"[E] Pick mushroom";
+    else if(nearStall())pr="[E] Open the market";
+    else if(sp){const o=eco.house.owners[sp.id];pr=!o?(eco.myPlot==null?`[E] Buy this plot for $${eco.plotPrice(sp.id).toLocaleString()}`:"For sale"):o==="me"?"Your plot. Press 3 to build":null}
+  }
+  hud.prompt(pr);
   refreshMoney();
   placeSun(camera.position);
   if(post)post.render(scene,camera);else renderer.render(scene,camera);
@@ -142,5 +203,10 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__ready=true;window.__dev={jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
-  advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
+window.__ready=true;window.__dev={town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
+  advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);pickups.update(1/30,player.x,player.z);town.update(1/30);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
+
+// autosave: every 8 seconds, when the tab is hidden, and when it closes
+setInterval(()=>{if(eco.save())hud.saved()},8000);
+addEventListener("beforeunload",()=>eco.save());
+document.addEventListener("visibilitychange",()=>{if(document.hidden)eco.save()});

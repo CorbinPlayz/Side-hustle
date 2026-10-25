@@ -1,4 +1,4 @@
-# Side Hustle
+# Side Hustle (formerly Duel Arena)
 
 A first-person 3D loot shooter for two players. Everything runs on one Cloudflare Worker, with no other services:
 
@@ -54,8 +54,10 @@ Pages serves static files only, so on Pages you get the pages and demo mode (no 
 
 ## The game so far (single player)
 
-`public/world.html` loads `public/world/*.js` (three.js 0.186 from cdnjs): a low-poly forest island with a dock, fishing (cast, bite, reel minigame), logging with an axe timing minigame, mushroom and glowcap foraging, one market with drifting prices for everything you gather, gear upgrades and a bag limit. Progress saves in the browser. Multiplayer, the other biomes, jobs and fight night come next.
+Open `world.html` (the front page redirects there). You start with nothing.
 
-## Play it on GitHub Pages
-
-This repo deploys the `public/` folder to GitHub Pages automatically on every push to `main`. One-time setup: Settings > Pages > Build and deployment > Source > **GitHub Actions**. Then open `https://<your-username>.github.io/Side-hustle/world.html`.
+- **Earn:** pick things up off the ground (E): shells, driftwood, bottles, tin cans, berries, mushrooms, and rare pearls, old coins and glowcaps. Sell them at the market stall by the dock.
+- **Grow:** buy a fishing rod ($110) or an axe ($170), a bigger bag, bait, boots. Fishing and logging are plain clicks, no minigames.
+- **Spend it:** buy a house plot (about $850) and build on a snap grid (press 3; G turns snapping off). A boat to reach the next biome is the next goal.
+- **Neighbours:** as the island earns money, NPC neighbours buy plots and move in. Each sale pushes land prices up harder than the last, and they buy goods too, which keeps market prices healthier. The number of neighbours is capped.
+- **Autosave:** progress saves every 8 seconds, when you switch tabs, and when you close the page (in this browser for now; account saves come with the Cloudflare version).

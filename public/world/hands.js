@@ -25,6 +25,8 @@ export function createHands(camera){
   const ah=new THREE.Mesh(new THREE.CylinderGeometry(.022,.026,.8,6),wood);ah.rotation.x=Math.PI/2;ah.position.set(0,0,-.3);axe.add(ah);
   axe.add(box(.05,.2,.34,new THREE.MeshStandardMaterial({color:0xcfd8e3,flatShading:true,roughness:.4,metalness:.4}),0,.05,-.62),box(.06,.1,.12,dark,0,.0,-.5));
   const axh=new THREE.Group();axe.add(axh);axh.add(box(.075,.07,.09,skin,0,0,.05),box(.07,.07,.2,sleeve,.01,-.04,.19));
+  const bare=new THREE.Group();g.add(bare);bare.visible=false;
+  for(const s of [-1,1]){const hand=new THREE.Group();hand.position.set(s*.22,-.3,-.5);hand.rotation.set(.35,-s*.15,0);hand.add(box(.08,.07,.1,skin,0,0,0),box(.075,.075,.22,sleeve,s*.01,-.04,.15));bare.add(hand)}
   let tool=0;
   const state={bob:0,cast:0,reel:0,tension:0,t:0,swing:0};
   let tipWorld=new THREE.Vector3();
@@ -32,11 +34,12 @@ export function createHands(camera){
     group:g,rod,tip,
     tipPos(){tip.getWorldPosition(tipWorld);return tipWorld},
     setVisible(v){g.visible=v},
-    setTool(i){tool=i;rod.visible=(i===0);lh.visible=(i===0);axe.visible=(i===1)},
+    setTool(i){tool=i;bare.visible=i>=2;rod.visible=(i===0);lh.visible=(i===0);axe.visible=(i===1)},
     swing(v){state.swing=v},
     /** speed 0..1 walking, cast 0..1 swing progress, reeling 0/1, tension 0..1 */
     update(dt,speed,cast,reeling,tension,hide){
       state.t+=dt;state.bob+=dt*(2+speed*7);
+      if(tool>=2){bare.position.set(Math.sin(state.bob)*.012*(.3+speed),Math.abs(Math.cos(state.bob))*.014*(.3+speed),0);return}
       if(tool===1){const bx2=Math.sin(state.bob)*.012*(.3+speed),by2=Math.abs(Math.cos(state.bob))*.014*(.3+speed),sw=state.swing;axe.position.set(.28+bx2-sw*.1,-.3+by2-(hide?.8:0)+sw*.06,-.5+sw*.05);axe.rotation.set(.55-sw*1.5,-.1,-.25+sw*.35);return}
       const bx=Math.sin(state.bob)*.012*(.3+speed),by=Math.abs(Math.cos(state.bob))*.014*(.3+speed);
       // cast swing: rod goes back then forward
