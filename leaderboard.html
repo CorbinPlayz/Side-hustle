@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leaderboard - Side Hustle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head><body class="fx">
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="index.html"><i></i>side<span>/</span>hustle</a>
+  <nav class="nav" aria-label="Sections"><a href="index.html#arsenal">arsenal</a><a href="leaderboard.html">leaderboard</a><a href="play.html">play</a></nav>
+  <span class="spacer"></span>
+  <span class="nav-user" id="navUser"></span>
+</div></header>
+<main class="page"><div class="wrap">
+  <div class="eyebrow">Rankings</div>
+  <h1><span class="shimmer">Leaderboard</span></h1>
+  <p class="lead">Approved players ranked by what they earn in online matches. Every match pays XP for rounds won, with a bonus for the win.</p>
+  <div class="chips" id="sortChips" role="group" aria-label="Sort by" style="margin-top:18px"></div>
+  <div class="podium" id="podium"></div>
+  <div class="lb" id="lb"></div>
+  <div class="demo-note" id="demoNote" hidden>Demo mode: only your own local stats appear here. Deploy the Worker to rank everyone (see README.md).</div>
+</div></main>
+<script src="js/data.js"></script>
+<script src="js/backend.js"></script>
+<script src="js/site.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},sort="xp",me=null;
+var SORTS=[["xp","XP"],["wins","Wins"],["kills","Kills"]],MED=["#ffb02e","#c9d1dc","#cd7f4a"];
+SORTS.forEach(function(s){var b=document.createElement("button");b.className="chip";b.type="button";b.textContent=s[1];b.setAttribute("aria-pressed",s[0]===sort);
+ b.onclick=function(){sort=s[0];[].forEach.call($("sortChips").children,function(x,i){x.setAttribute("aria-pressed",SORTS[i][0]===sort)});load()};$("sortChips").appendChild(b)});
+function kd(r){return r.deaths?(r.kills/r.deaths).toFixed(2):r.kills.toFixed(2)}
+function render(rows){
+ var pod=$("podium"),lb=$("lb");pod.innerHTML="";lb.innerHTML="";
+ if(!rows.length){lb.innerHTML='<div class="empty">No ranked players yet. Win a match to claim the top spot.</div>';return}
+ rows.slice(0,3).forEach(function(r,i){
+  var d=document.createElement("div"),li=Data.levelInfo(r.xp);d.className="pod"+(i===0?" first":"");d.style.setProperty("--c",MED[i]);d.style.setProperty("--i",i===0?0:i);
+  d.innerHTML='<div class="medal">#'+(i+1)+'</div><b>'+Site.esc(r.username)+'</b><span>Level '+li.level+' / <em class="n" data-v="'+r[sort]+'">0</em> '+sort+'</span>';
+  pod.appendChild(d);Site.countUp(d.querySelector(".n"),r[sort],1100);
+ });
+ var h=document.createElement("div");h.className="lbrow head";h.innerHTML="<span>#</span><span>Player</span><span>Progress</span><span>Wins</span><span>Kills</span><span>K/D</span>";lb.appendChild(h);
+ var maxXp=Math.max(1,rows[0].xp);
+ rows.forEach(function(r,i){
+  var li=Data.levelInfo(r.xp),row=document.createElement("div");row.className="lbrow"+(me&&r.username===me?" me":"");row.style.setProperty("--i",i);
+  row.innerHTML="<span>"+(i+1)+'</span><span class="nm"><span class="lvl">'+li.level+'</span><span>'+Site.esc(r.username)+'</span></span><span><div class="xpbar"><i></i></div></span><span>'+r.wins+"</span><span>"+r.kills+"</span><span>"+kd(r)+"</span>";
+  lb.appendChild(row);
+  var bar=row.querySelector("i");setTimeout(function(){bar.style.width=Math.round(r.xp/maxXp*100)+"%"},120+i*45);
+ });
+}
+function load(){
+ Backend.leaderboard(sort,50).then(render).catch(function(e){$("lb").innerHTML='<div class="empty">'+Site.esc(e.message)+'</div>'});
+}
+Site.nav().then(function(r){me=r.profile&&r.profile.username;$("demoNote").hidden=r.state!=="demo";load()});
+})();
+</script></body></html>

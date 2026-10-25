@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in - Side Hustle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head><body class="fx">
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="index.html"><i></i>side<span>/</span>hustle</a>
+  <nav class="nav" aria-label="Sections"><a href="index.html#arsenal">arsenal</a><a href="leaderboard.html">leaderboard</a><a href="play.html">play</a></nav>
+  <span class="spacer"></span>
+  <span class="nav-user" id="navUser"></span>
+</div></header>
+<main class="page"><div class="wrap">
+  <div class="eyebrow">Account</div>
+  <h1>Sign in to <span class="shimmer">Side Hustle</span></h1>
+  <p class="lead">Accounts keep your level, your unlocked attachments and your leaderboard rank. New accounts are approved by an admin before they can play.</p>
+  <div class="card-form" id="formCard">
+    <div id="gate" class="gate" hidden></div>
+    <form id="authForm" novalidate>
+      <div class="tabs" role="tablist"><button type="button" role="tab" id="tabIn" aria-selected="true">Sign in</button><button type="button" role="tab" id="tabUp" aria-selected="false">Create account</button></div>
+      <label class="field">Username<input id="username" autocomplete="username" maxlength="16" placeholder="Your username"></label>
+      <label class="field">Password<input id="password" type="password" autocomplete="current-password" minlength="8" placeholder="At least 8 characters"></label>
+      <label class="field" id="fCode" hidden>Invite code (optional)<input id="code" autocomplete="off" maxlength="40" placeholder="Only if the owner gave you one"></label>
+      <div class="form-msg" id="msg" role="alert"></div>
+      <button class="btn primary wide" id="go" type="submit">Sign in</button>
+    </form>
+  </div>
+  <div class="demo-note" id="demoNote" hidden>Demo mode: no backend is connected yet, so there are no accounts. Your level and loadout are saved in this browser only. Deploy the Worker (see README.md) to turn accounts on.<br><a class="btn primary" href="play.html" style="margin-top:12px">Play now</a></div>
+</div></main>
+<script src="js/data.js"></script>
+<script src="js/backend.js"></script>
+<script src="js/site.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},up=false,next=new URLSearchParams(location.search).get("next")||"play.html";
+if(!/^[a-z0-9_\-]+\.html(\?[A-Za-z0-9=&_\-]*)?$/i.test(next))next="play.html";
+function mode(u){up=u;$("tabIn").setAttribute("aria-selected",!u);$("tabUp").setAttribute("aria-selected",u);$("fCode").hidden=!u;$("go").textContent=u?"Create account":"Sign in";$("password").autocomplete=u?"new-password":"current-password";$("msg").textContent=""}
+$("tabIn").onclick=function(){mode(false)};$("tabUp").onclick=function(){mode(true)};
+function gate(state){
+ $("authForm").hidden=true;var g=$("gate");g.hidden=false;g.className="gate"+(state==="blocked"?" blocked":"");
+ g.innerHTML=state==="blocked"?'<div class="ring"></div><h2>Access removed</h2><p>An admin has blocked this account. Contact the site owner if you think this is a mistake.</p><p>Your user ID: <b>'+(Backend.profile?Backend.profile.id:'?')+'</b></p><button class="btn" id="so">Sign out</button>'
+  :'<div class="ring"></div><h2>Waiting for approval</h2><p>Your account is created. An admin needs to approve it before you can play. This page checks again every few seconds.</p><p>Your user ID: <b>'+(Backend.profile?Backend.profile.id:'?')+'</b></p><button class="btn" id="so">Sign out</button>';
+ $("so").onclick=function(){Backend.signOut().then(function(){location.reload()})};
+}
+var poll=null;
+function route(r){
+ if(r.state==="ok"){location.replace(next);return}
+ if(r.state==="pending"||r.state==="blocked"){gate(r.state);clearInterval(poll);if(r.state==="pending")poll=setInterval(function(){Backend.refresh().then(function(x){if(x.state==="ok")location.replace(next);else if(x.state==="blocked"){gate("blocked");clearInterval(poll)}})},5000)}
+}
+Site.nav().then(function(r){
+ if(r.state==="demo"){$("formCard").hidden=true;$("demoNote").hidden=false;return}
+ route(r);
+});
+$("authForm").onsubmit=function(e){
+ e.preventDefault();var m=$("msg");m.className="form-msg";m.textContent="";
+ var pw=$("password").value,name=$("username").value.trim();
+ if(!/^[A-Za-z0-9_]{3,16}$/.test(name)){m.textContent="Usernames are 3 to 16 letters, numbers or underscores.";return}
+ if(pw.length<8){m.textContent="Passwords need at least 8 characters.";return}
+ $("go").disabled=true;
+ var p=up?Backend.signUp(name,pw,$("code").value.trim()):Backend.signIn(name,pw);
+ p.then(function(r){if(r)route(r)}).catch(function(err){m.textContent=err.message}).then(function(){$("go").disabled=false});
+};
+Site.reveal();
+})();
+</script></body></html>

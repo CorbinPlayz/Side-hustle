@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin - Side Hustle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head><body class="fx">
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="index.html"><i></i>side<span>/</span>hustle</a>
+  <nav class="nav" aria-label="Sections"><a href="index.html#arsenal">arsenal</a><a href="leaderboard.html">leaderboard</a><a href="play.html">play</a></nav>
+  <span class="spacer"></span>
+  <span class="nav-user" id="navUser"></span>
+</div></header>
+<main class="page"><div class="wrap">
+  <div class="eyebrow">Admin panel</div>
+  <h1><span class="shimmer">Who can play</span></h1>
+  <p class="lead">Approve new accounts, block anyone you do not want on the site. Changes apply the next time that player loads the game.</p>
+  <div id="body"></div>
+</div></main>
+<script src="js/data.js"></script>
+<script src="js/backend.js"></script>
+<script src="js/site.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},users=[],tab="pending",q="";
+function show(html){$("body").innerHTML=html}
+function stat(label,n){return '<div class="stat"><b data-n="'+n+'">0</b><span>'+label+'</span></div>'}
+function counts(){var c={pending:0,approved:0,blocked:0};users.forEach(function(u){c[u.status]++});return c}
+function build(){
+ var c=counts();
+ show('<div class="admin-stats">'+stat("Waiting",c.pending)+stat("Approved",c.approved)+stat("Blocked",c.blocked)+stat("Total",users.length)+'</div>'+
+ '<div class="toolbar"><div class="chips" id="tabs"></div><div style="display:flex;gap:8px"><input id="search" type="search" placeholder="search username" aria-label="Search"><button class="btn" id="refresh" type="button">Refresh</button></div></div><div class="lb" id="list"></div>');
+ [].forEach.call(document.querySelectorAll(".stat b"),function(b){Site.countUp(b,+b.dataset.n,900)});
+ [["pending","Waiting"],["approved","Approved"],["blocked","Blocked"],["all","All"]].forEach(function(t){
+  var b=document.createElement("button");b.className="chip";b.type="button";b.textContent=t[1]+(t[0]!=="all"?" ("+c[t[0]]+")":"");b.setAttribute("aria-pressed",t[0]===tab);
+  b.onclick=function(){tab=t[0];build()};$("tabs").appendChild(b);
+ });
+ $("search").value=q;$("search").oninput=function(){q=this.value.toLowerCase();list()};
+ $("refresh").onclick=load;list();
+}
+function list(){
+ var box=$("list");box.innerHTML="";
+ var rows=users.filter(function(u){return (tab==="all"||u.status===tab)&&(!q||(u.username||"").toLowerCase().indexOf(q)>-1)});
+ if(!rows.length){box.innerHTML='<div class="empty">'+(tab==="pending"?"Nobody is waiting for approval.":"No players match.")+"</div>";return}
+ var h=document.createElement("div");h.className="urow head";h.innerHTML="<span>Player</span><span>Joined</span><span>Status</span><span>Level</span><span style='text-align:right'>Actions</span>";box.appendChild(h);
+ rows.forEach(function(u,i){
+  var r=document.createElement("div");r.className="urow";r.style.setProperty("--i",i);r.dataset.id=u.id;
+  var me=Backend.profile&&Backend.profile.id===u.id;
+  r.innerHTML='<span class="nm">'+Site.esc(u.username)+(u.is_admin?' <span class="tag">admin</span>':"")+(me?' <span class="tag">you</span>':"")+'</span><span class="em">'+(u.created_at?new Date(u.created_at).toLocaleDateString():"")+'</span><span><span class="chip-s '+u.status+'">'+u.status+'</span></span><span>Lv '+Data.levelInfo(u.xp).level+'</span><span class="acts"></span>';
+  var a=r.querySelector(".acts");
+  function btn(t,cls,fn){var b=document.createElement("button");b.className="mini "+cls;b.type="button";b.textContent=t;b.disabled=me;b.onclick=function(){b.disabled=true;fn().then(function(row){Object.assign(u,row);Site.toast("Saved");build()}).catch(function(e){Site.toast(e.message);b.disabled=false})};a.appendChild(b)}
+  if(u.status!=="approved")btn(u.status==="blocked"?"Unblock":"Approve","ok",function(){return Backend.admin.setStatus(u.id,"approved")});
+  if(u.status!=="blocked")btn("Block","bad",function(){return Backend.admin.setStatus(u.id,"blocked")});
+  box.appendChild(r);
+ });
+}
+function load(){Backend.admin.list().then(function(r){users=r;build()}).catch(function(e){show('<div class="empty">'+Site.esc(e.message)+"</div>")})}
+Site.nav().then(function(r){
+ if(r.state==="demo"){show('<div class="demo-note">Demo mode: there is no backend, so there is nobody to manage. Deploy the Worker to turn the admin panel on (see README.md).</div>');return}
+ if(!r.profile||r.state!=="ok"||!r.profile.is_admin){show('<div class="card-form"><div class="gate blocked"><div class="ring"></div><h2>Admins only</h2><p>'+(r.profile?"This account is not an admin.":"Sign in with an admin account.")+'</p><a class="btn" href="login.html?next=admin.html">Sign in</a></div></div>');return}
+ load();setInterval(function(){if(!document.hidden)Backend.admin.list().then(function(r){if(JSON.stringify(r)!==JSON.stringify(users)){users=r;build()}}).catch(function(){})},20000);
+});
+})();
+</script></body></html>

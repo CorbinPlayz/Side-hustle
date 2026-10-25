@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diagnostics - Side Hustle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head><body>
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="index.html"><i></i>side<span>/</span>hustle</a>
+  <nav class="nav" aria-label="Sections"><a href="index.html#arsenal">arsenal</a><a href="index.html#online">play online</a><a href="diagnostics.html">diagnostics</a></nav>
+</div></header>
+<main class="wrap diag">
+  <div class="eyebrow">Diagnostics</div>
+  <h1>Can this browser run Side Hustle?</h1>
+  <p>Each line shows what this browser allowed just now. The game needs WebGL for 3D. Online duels also need WebRTC and a path to the signaling server. A school or work network can block either, and only its administrator can change that.</p>
+  <ul id="r"></ul>
+  <a class="btn" href="index.html">Back to Side Hustle</a>
+</main>
+<script>
+(function(){
+var r=document.getElementById("r");
+function row(name){
+  var li=document.createElement("li");li.className="wait";
+  var s=document.createElement("span");s.className="s";s.textContent="...";
+  var n=document.createElement("span");n.className="n";n.textContent=name;
+  li.appendChild(s);li.appendChild(n);r.appendChild(li);
+  return function(ok,note){
+    li.className=ok?"pass":"fail";s.textContent=ok?"PASS":"FAIL";
+    if(note){var m=document.createElement("small");m.textContent=note;n.appendChild(m)}
+  };
+}
+function sync(name,f){var done=row(name);try{var v=f();done(!!v,typeof v==="string"?v:"")}catch(e){done(false,e.message)}}
+
+sync("JavaScript runs",function(){return true});
+sync("Sound (WebAudio)",function(){return window.AudioContext||window.webkitAudioContext});
+sync("Full screen allowed",function(){return document.fullscreenEnabled});
+sync("Secure context (HTTPS)",function(){return window.isSecureContext?true:"Online play may fail on plain http. Use an https address."});
+sync("WebGL available (3D graphics)",function(){var c=document.createElement("canvas");return !!(c.getContext("webgl")||c.getContext("experimental-webgl"))});
+sync("WebSocket available (online duels)",function(){return typeof WebSocket!=="undefined"});
+
+var apiDone=row("Game server reachable (/api/me)");
+fetch("/api/me",{credentials:"same-origin"}).then(function(r){
+  var ct=r.headers.get("content-type")||"";
+  apiDone(ct.indexOf("json")>-1,ct.indexOf("json")>-1?"":"This page is not served by the Worker, so accounts and online play are off.");
+}).catch(function(e){apiDone(false,e.message)});
+})();
+</script></body></html>
