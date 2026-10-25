@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Side Hustle</title>
+<meta name="description" content="Side Hustle: a first-person 3D loot shooter for two players. Everyone starts with a pistol; find guns and medkits in chests and buildings, level up to unlock attachments, and play online with a room code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head><body class="fx">
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="#top"><i></i>side<span>/</span>hustle</a>
+  <nav class="nav" aria-label="Sections"><a href="#arsenal">arsenal</a><a href="#attachments">attachments</a><a href="#rarity">rarity</a><a href="#map">map</a><a href="leaderboard.html">leaderboard</a><a href="diagnostics.html">diagnostics</a></nav>
+  <span class="spacer"></span>
+  <span class="nav-user" id="navUser"></span>
+  <a class="btn primary" href="play.html">Play</a>
+</div></header>
+
+<main id="top">
+<section class="wrap hero">
+  <div>
+    <div class="eyebrow">1v1 &middot; first-person &middot; runs in the browser</div>
+    <h1><span class="shimmer">Start with a pistol.</span> Loot your way to the win.</h1>
+    <p>Side Hustle is a 3D first-person duel on a 180 m map of farmland, forest and water. Search chests, cabins, a barn and a bunker for guns and medkits. Level up to unlock attachments, fit them in the lobby, and outlast the other player. Play on one computer, or over the internet with a five-letter room code.</p>
+    <div class="cta">
+      <a class="btn primary" href="play.html">Open game</a>
+      <a class="btn" href="#online">Play online</a><a class="btn" href="leaderboard.html">Leaderboard</a>
+    </div>
+  </div>
+  <div>
+    <div class="gunstage" aria-label="Rotating 3D gun preview. Drag to turn it.">
+      <canvas id="heroGun"></canvas>
+      <div class="label"><div><b id="heroName">Assault Rifle</b><span id="heroSub"></span></div><span>drag to rotate</span></div>
+    </div>
+    <div class="term" style="margin-top:14px" aria-label="Game summary">
+      <div class="term-bar"><b></b><b></b><b></b><span>duel-arena --info</span></div>
+      <pre id="readout"></pre>
+    </div>
+  </div>
+</section>
+
+<section class="wrap"><div class="statband">
+  <div class="stat reveal" style="--i:0"><b data-n="8">0</b><span>guns</span></div>
+  <div class="stat reveal" style="--i:1"><b data-n="21">0</b><span>attachments</span></div>
+  <div class="stat reveal" style="--i:2"><b data-n="30">0</b><span>levels</span></div>
+  <div class="stat reveal" style="--i:3"><b data-n="180">0</b><span>metre map</span></div>
+</div></section>
+
+<section class="wrap section reveal" id="online">
+  <div class="lobby">
+    <div>
+      <span class="tag live">online 1v1</span>
+      <h2>Join a room</h2>
+      <p>Got a code from a friend? Enter it to connect straight to their match.</p>
+      <form class="join" id="joinForm">
+        <input id="code" maxlength="5" placeholder="XXXXX" aria-label="Room code" autocomplete="off" spellcheck="false">
+        <button class="btn primary" type="submit">Join room</button>
+        <button class="btn hot" type="button" id="createRoom">Create room</button>
+        <a class="btn" href="play.html?local=1">Same computer</a>
+      </form>
+    </div>
+    <div>
+      <h2>How a room works</h2>
+      <ol class="steps">
+        <li><b>01</b><span>Create a room and choose the map, score limit and time limit.</span></li>
+        <li><b>02</b><span>Send the five-letter code to your opponent on any computer.</span></li>
+        <li><b>03</b><span>They enter it, you press Start, and both of you spawn with a pistol.</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="wrap section reveal" id="loot">
+  <div class="section-head"><div><h2>Loot loop</h2><p>Everything you carry comes from the map. Nobody gets a loadout, so the first two minutes are a race for gear.</p></div></div>
+  <div class="two">
+    <div class="box"><h3>Where loot comes from</h3>
+      <ul>
+        <li><span><b>Ground loot.</b> Guns and medkits lie around the map. Each spawn side also gets mirrored caches so the opening is fair.</span></li>
+        <li><span><b>Chests.</b> Cabins and the barn hold supply chests. Press the use key to open one and its contents spill out in front of it.</span></li>
+        <li><span><b>The bunker.</b> A concrete bunker with a divided interior holds the best chests, with the highest chance of Epic and Legendary items.</span></li>
+        <li><span><b>Each round is a fresh table.</b> After a kill the map resets with new loot, and both players go back to a pistol.</span></li>
+      </ul></div>
+    <div class="box"><h3>What you can carry</h3>
+      <ul>
+        <li><span><b>Two weapon slots.</b> You start with a Common pistol in slot 1. A second gun fills slot 2. A third replaces the gun in your hands, and the old one drops.</span></li>
+        <li><span><b>Attachments come from levels.</b> Win matches to earn XP, unlock attachments, and fit them to each gun in the lobby armory. Any gun you find on the map comes with your fitting already on it.</span></li>
+        <li><span><b>Medkits.</b> Restore 30 to 100 health depending on rarity. A medkit stays on the ground if your health is already full.</span></li>
+        <li><span><b>Nothing is automatic.</b> You choose what to pick up, and the prompt shows the stats and what it will replace. Fish jump in the deep water, if you stop to look.</span></li>
+      </ul></div>
+  </div>
+</section>
+
+<section class="wrap section reveal" id="arsenal">
+  <div class="section-head"><div><h2>Arsenal</h2><p>Eight guns, all hitscan with distance falloff. Numbers below are for a Common gun with no attachments. Higher rarity scales damage, magazine, reload and accuracy.</p></div></div>
+  <div class="table-wrap"><table class="data" id="gunTable"></table></div>
+</section>
+
+<section class="wrap section reveal" id="attachments">
+  <div class="section-head"><div><h2>Attachments</h2><p>Seven categories, three options each, unlocked as you level up (levels 2 to 25). An attachment's level sets its rarity, and its effect scales with that rarity. Pick a rarity to see the numbers.</p></div>
+    <div class="chips" id="attChips" role="group" aria-label="Attachment rarity"></div></div>
+  <div class="cats" id="cats"></div>
+</section>
+
+<section class="wrap section reveal" id="rarity">
+  <div class="section-head"><div><h2>Rarity</h2><p>Five tiers. Rarity changes the gun itself and how strongly an attachment applies. Chests and the bunker roll on better tables than the ground.</p></div></div>
+  <div class="rar" id="rarCards"></div>
+</section>
+
+<section class="wrap section reveal" id="map">
+  <div class="section-head"><div><h2>The map</h2><p>A 180 m square of rolling grass, dirt tracks, forest and water, built from a seed so both players always get the identical map. It is a working farm, not a theme park: structures are plain, solid and made for cover.</p></div></div>
+  <div class="two">
+    <div class="box"><h3>Structures</h3>
+      <ul>
+        <li><span><b>Barn.</b> Large red barn with wide doors, crates for cover and two chests.</span></li>
+        <li><span><b>Three log cabins.</b> Doors, windows and a chest each. Good for close fights.</span></li>
+        <li><span><b>Bunker.</b> Low concrete building with firing slits, an inner wall and two bunker chests with the best odds.</span></li>
+        <li><span><b>Grain silo.</b> A tall landmark with crates at its base.</span></li>
+        <li><span><b>Container yards, stone ruins and crate stacks</b> break up the open fields.</span></li>
+      </ul></div>
+    <div class="box"><h3>Terrain and physics</h3>
+      <ul>
+        <li><span><b>Two maps.</b> Meadow Pond has a pond near the centre. Riverside has a creek that crosses the field.</span></li>
+        <li><span><b>Wading.</b> Water slows you down. Deep water means swimming, and the view turns blue underwater.</span></li>
+        <li><span><b>Cover that works.</b> Trees, rocks, hills and building walls all stop bullets. Shots splash in water and kick up dirt on the ground.</span></li>
+        <li><span><b>Aim matters.</b> Moving, jumping and firing in bursts all widen your spread. Aiming down sights tightens it.</span></li>
+      </ul></div>
+  </div>
+</section>
+
+<section class="wrap section reveal" id="controls">
+  <div class="section-head"><div><h2>Controls</h2></div></div>
+  <div class="two">
+    <div class="box"><h3>Player 1 and online</h3>
+      <div class="keys">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Move</span>
+        <span>Mouse</span><span>Look. Click the game to capture the mouse.</span>
+        <span><kbd>Click</kbd></span><span>Fire</span>
+        <span><kbd>Right-click</kbd> or <kbd>Shift</kbd></span><span>Aim down sights</span>
+        <span><kbd>E</kbd></span><span>Pick up, open a chest, use a medkit</span>
+        <span><kbd>1</kbd> <kbd>2</kbd> <kbd>Q</kbd> wheel</span><span>Switch weapon</span>
+        <span><kbd>R</kbd></span><span>Reload</span>
+        <span><kbd>Space</kbd></span><span>Jump</span>
+      </div></div>
+    <div class="box"><h3>Player 2 (same computer)</h3>
+      <div class="keys">
+        <span><kbd>&uarr;</kbd><kbd>&darr;</kbd></span><span>Move forward and back</span>
+        <span><kbd>&larr;</kbd><kbd>&rarr;</kbd></span><span>Turn</span>
+        <span><kbd>,</kbd> <kbd>.</kbd></span><span>Strafe</span>
+        <span><kbd>Enter</kbd></span><span>Fire</span>
+        <span><kbd>'</kbd></span><span>Aim down sights</span>
+        <span><kbd>L</kbd></span><span>Pick up and use</span>
+        <span><kbd>K</kbd></span><span>Switch weapon</span>
+        <span><kbd>Right Shift</kbd> <kbd>/</kbd></span><span>Reload, jump</span>
+      </div></div>
+  </div>
+  <div class="stack">
+    <span><b>render</b> three.js (WebGL)</span><span><b>audio</b> webaudio, synthesized</span><span><b>sim</b> deterministic, seeded world</span><span><b>netcode</b> websocket, server authoritative, 30 Hz</span><span><b>server</b> Cloudflare Workers + Durable Objects</span>
+  </div>
+</section>
+</main>
+<footer><div class="wrap"><span>duel/arena</span><span><a href="leaderboard.html">Leaderboard</a> &nbsp; <a href="diagnostics.html">Run diagnostics</a></span></div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/backend.js"></script>
+<script src="js/site.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/render.js"></script>
+<script src="js/landing.js"></script>
+</body></html>
