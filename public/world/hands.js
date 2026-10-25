@@ -1,9 +1,9 @@
 import * as THREE from "three";
+import {makeHand,SKINS,TOP_COLORS} from "./character.js";
 /** First-person hands and fishing rod, parented to the camera. Everything is flat-shaded boxes in the game's low-poly style. */
-export function createHands(camera){
+export function createHands(camera,look={skin:1,topColor:1}){
   const g=new THREE.Group();camera.add(g);g.scale.setScalar(.78);g.position.set(.04,-.02,0);
-  const skin=new THREE.MeshStandardMaterial({color:0xe3b186,flatShading:true,roughness:.9});
-  const sleeve=new THREE.MeshStandardMaterial({color:0x2f6f8f,flatShading:true,roughness:.9});
+  const SK=SKINS[look.skin%SKINS.length],SL=TOP_COLORS[look.topColor%TOP_COLORS.length];
   const wood=new THREE.MeshStandardMaterial({color:0xb08a52,flatShading:true,roughness:.8});
   const dark=new THREE.MeshStandardMaterial({color:0x3a3f48,flatShading:true,roughness:.6,metalness:.3});
   const cork=new THREE.MeshStandardMaterial({color:0xd9b27a,flatShading:true,roughness:1});
@@ -16,17 +16,20 @@ export function createHands(camera){
   const tip=new THREE.Object3D();tip.position.set(0,0,-2.4);rod.add(tip);
   // right hand wraps the handle
   const rh=new THREE.Group();rod.add(rh);rh.position.set(0,0,.05);
-  rh.add(box(.075,.07,.09,skin,0,0,0),box(.085,.05,.04,skin,0,-.02,-.055),box(.07,.07,.2,sleeve,.015,-.05,.14));
+  {const m=makeHand(SK,SL,1);m.scale.setScalar(.62);m.position.set(0,-.01,.04);m.rotation.set(.1,0,0);rh.add(m)}
   // left hand cranks the reel
   const lh=new THREE.Group();g.add(lh);lh.position.set(-.1,-.27,-.5);
-  lh.add(box(.065,.065,.085,skin,0,0,0),box(.065,.065,.2,sleeve,-.015,-.045,.14));
+  {const m=makeHand(SK,SL,-1);m.scale.setScalar(.62);m.rotation.set(.35,.2,0);lh.add(m)}
   // axe
   const axe=new THREE.Group();g.add(axe);axe.visible=false;
   const ah=new THREE.Mesh(new THREE.CylinderGeometry(.022,.026,.8,6),wood);ah.rotation.x=Math.PI/2;ah.position.set(0,0,-.3);axe.add(ah);
-  axe.add(box(.05,.2,.34,new THREE.MeshStandardMaterial({color:0xcfd8e3,flatShading:true,roughness:.4,metalness:.4}),0,.05,-.62),box(.06,.1,.12,dark,0,.0,-.5));
-  const axh=new THREE.Group();axe.add(axh);axh.add(box(.075,.07,.09,skin,0,0,.05),box(.07,.07,.2,sleeve,.01,-.04,.19));
+  {const sh=new THREE.Shape();sh.moveTo(0,-.1);sh.lineTo(.2,-.2);sh.lineTo(.26,.0);sh.lineTo(.2,.2);sh.lineTo(0,.1);sh.lineTo(-.04,0);sh.closePath();
+   const eg=new THREE.ExtrudeGeometry(sh,{depth:.05,bevelEnabled:true,bevelSize:.01,bevelThickness:.01,bevelSegments:1});eg.translate(0,0,-.025);
+   const blade=new THREE.Mesh(eg,new THREE.MeshStandardMaterial({color:0xcfd8e3,flatShading:true,roughness:.35,metalness:.5}));blade.rotation.set(0,-Math.PI/2,0);blade.scale.setScalar(.5);blade.position.set(0,.02,-.62);blade.castShadow=true;axe.add(blade);
+   axe.add(box(.06,.1,.12,dark,0,0,-.52))}
+  const axh=new THREE.Group();axe.add(axh);{const m=makeHand(SK,SL,1);m.scale.setScalar(.62);m.position.set(0,0,.05);axh.add(m)}
   const bare=new THREE.Group();g.add(bare);bare.visible=false;
-  for(const s of [-1,1]){const hand=new THREE.Group();hand.position.set(s*.22,-.3,-.5);hand.rotation.set(.35,-s*.15,0);hand.add(box(.08,.07,.1,skin,0,0,0),box(.075,.075,.22,sleeve,s*.01,-.04,.15));bare.add(hand)}
+  for(const s of [-1,1]){const hand=makeHand(SK,SL,s);hand.scale.setScalar(.62);hand.position.set(s*.2,-.3,-.55);hand.rotation.set(.45,-s*.12,0);bare.add(hand)}
   let tool=0;
   const state={bob:0,cast:0,reel:0,tension:0,t:0,swing:0};
   let tipWorld=new THREE.Vector3();

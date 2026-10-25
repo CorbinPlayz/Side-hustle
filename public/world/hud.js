@@ -1,4 +1,4 @@
-import {ALL,UPGRADES,TOOLS,GOALS,byId} from "./economy.js";
+import {ALL,UPGRADES,TOOLS,GOALS,LOCATIONS,CATS,byId} from "./economy.js";
 const CSS=`
 @import url('https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap');
 #hud{position:fixed;inset:0;pointer-events:none;font-family:'Alegreya Sans',system-ui,sans-serif;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.55)}
@@ -94,22 +94,22 @@ export function createHud(){
     select(i){[...bar.children].forEach((c,k)=>c.classList.toggle("sel",k===i))},
     flash(){fade.style.opacity=.35;setTimeout(()=>fade.style.opacity=0,60)},
     marketOpen:false,
-    openMarket(eco,onChange){
+    openMarket(eco,onChange,loc="dock"){
       api.marketOpen=true;market.style.display="flex";
       const draw=()=>{
         const rows=ALL.map(f=>{const t=eco.trend(f.id),n=eco.bag.filter(x=>x.id===f.id).length;
-          return `<tr><td>${f.name}</td><td>$${eco.price(f.id)}</td><td class="${t>0?"up":t<0?"down":"flat"}">${t>0?"▲":t<0?"▼":"–"}</td><td>${n?"x"+n:""}</td></tr>`}).join("");
-        const total=eco.bag.reduce((a,f)=>a+eco.value(f),0);
+          return `<tr><td>${f.name}</td><td>$${eco.price(f.id,loc)}</td><td class="${t>0?"up":t<0?"down":"flat"}">${t>0?"▲":t<0?"▼":"–"}</td><td>${n?"x"+n:""}</td></tr>`}).join("");
+        const total=eco.bag.reduce((a,f)=>a+eco.value(f,loc),0);
         const tools=TOOLS.map(t=>{const c=eco.toolCost(t.id);return `<div class="urow"><div><b>${t.name}</b><small>${t.desc}</small></div><button data-tool="${t.id}" ${c==null||eco.money<c?"disabled":""}>${c==null?"Owned":"$"+c}</button></div>`}).join("");
         const ups=UPGRADES.map(u=>{const c=eco.upgradeCost(u.id),ok=eco.canUpgrade(u.id);
           return `<div class="urow"><div><b>${u.name}</b> (${eco.up[u.id]}/${u.max})<small>${ok?u.desc:"Needs the "+(u.needs==="rod"?"fishing rod":"axe")}</small></div><button data-up="${u.id}" ${c==null||eco.money<c||!ok?"disabled":""}>${c==null?"Maxed":"$"+c}</button></div>`}).join("");
         const goals=`<div class="urow"><div><b>House plot</b><small>${eco.myPlot!=null?"You own plot "+(eco.myPlot+1)+". Press 3 to build.":"Look for a FOR SALE sign. Prices rise as neighbours move in: now about $"+eco.plotPrice(0).toLocaleString()}</small></div><span>${eco.myPlot!=null?"Owned":""}</span></div><div class="urow"><div><b>Boat</b><small>Opens the next island. Coming soon.</small></div><span>$${GOALS.boat.toLocaleString()}</span></div>`;
-        market.innerHTML=`<div class="panel"><h2>Market</h2><div class="sub">Prices move on their own and drop when you flood the market with one thing. You have $${eco.money.toLocaleString()}.</div>
+        market.innerHTML=`<div class="panel"><h2>${LOCATIONS[loc].name}</h2><div class="sub">${eco.event?"<b style=\"color:#ffd23a\">News:</b> "+(eco.event.mod>0?CATS[eco.event.cat].up:CATS[eco.event.cat].down)+"<br>":""}Prices ease back to normal and drop when you flood the market with one thing. ${loc==="village"?"The village pays extra for logs and forage, less for fish. ":"The dock pays a bit extra for fish. "}You have $${eco.money.toLocaleString()}.</div>
         <div class="cols"><div><table>${rows}</table><p style="margin:12px 0 0"><button id="sellAll" ${eco.bag.length?"":"disabled"}>Sell all (${eco.bag.length}) for $${total}</button></p></div>
         <div><h3 style="margin:0 0 6px;font:700 20px Alegreya,serif">Tools</h3>${tools}<h3 style="margin:12px 0 6px;font:700 20px Alegreya,serif">Upgrades</h3>${ups}<h3 style="margin:12px 0 6px;font:700 20px Alegreya,serif">Goals</h3>${goals}</div></div>
         <p style="margin:14px 0 0;text-align:right"><button id="mClose">Close (E)</button></p></div>`;
         market.querySelectorAll("[data-tool]").forEach(b=>b.onclick=()=>{if(eco.buyTool(b.dataset.tool)){onChange("bought",b.dataset.tool);draw()}});
-        market.querySelector("#sellAll").onclick=()=>{const t=eco.sellAll();onChange("sold",t);draw()};
+        market.querySelector("#sellAll").onclick=()=>{const t=eco.sellAll(loc);onChange("sold",t);draw()};
         market.querySelectorAll("[data-up]").forEach(b=>b.onclick=()=>{if(eco.buy(b.dataset.up)){onChange("bought",b.dataset.up);draw()}});
         market.querySelector("#mClose").onclick=api.closeMarket;
       };

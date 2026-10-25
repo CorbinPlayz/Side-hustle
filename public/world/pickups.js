@@ -12,6 +12,8 @@ function build(id){
   else if(id==="can"){add(new THREE.CylinderGeometry(.08,.08,.16,8),mat(G.color,{metalness:.5,roughness:.4}),0,.08,0,.2,0,.15);add(new THREE.CylinderGeometry(.06,.06,.02,8),mat(0xe35a4a),0,.17,0,.2,0,.15)}
   else if(id==="coin"){add(new THREE.CylinderGeometry(.16,.16,.03,10),mat(G.color,{metalness:.7,roughness:.3,emissive:0x6a4a00}),0,.17,0,Math.PI/2.4,0,0)}
   else if(id==="pearl"){add(new THREE.ConeGeometry(.22,.1,7),mat(0xe8d8e0),0,.05,0);add(new THREE.IcosahedronGeometry(.1,1),mat(0xffffff,{emissive:0x9a8aa8,roughness:.2}),0,.14,0)}
+  else if(id==="crystal"){const cm=mat(G.color,{emissive:0x2a8ab0,emissiveIntensity:.9,roughness:.2});add(new THREE.ConeGeometry(.1,.55,5),cm,0,.28,0);add(new THREE.ConeGeometry(.07,.38,5),cm,.12,.19,.05,0,0,-.4);add(new THREE.ConeGeometry(.07,.32,5),cm,-.1,.16,-.05,0,0,.5)}
+  else if(id==="glowcap"){const cm=mat(G.color,{emissive:0x1aa8c8,emissiveIntensity:1});add(new THREE.CylinderGeometry(.04,.05,.2,6),mat(0xe8f6f8),0,.1,0);add(new THREE.SphereGeometry(.16,8,5,0,6.283,0,1.57),cm,0,.22,0)}
   else if(id==="berries"){
     add(new THREE.IcosahedronGeometry(.42,0),mat(0x2f8a3a),0,.3,0).scale.set(1,.7,1);
     for(let i=0;i<7;i++){const a=i*2.4;add(new THREE.IcosahedronGeometry(.07,0),mat(0xc22f66,{emissive:0x300010}),Math.cos(a)*.34,.3+Math.sin(i*1.3)*.14,Math.sin(a)*.34)}
@@ -54,16 +56,21 @@ export class Pickups{
     }
     return best;
   }
+  /** A pickup that always comes back in the same place, for landmarks. */
+  addFixed(id,x,y,z,secs=240){
+    const mesh=build(id);mesh.position.set(x,y,z);mesh.rotation.y=this.rand()*6.283;this.group.add(mesh);
+    this.items.push({id,x,y,z,mesh,bob:0,fixed:{x,y,z,secs}});
+  }
   take(it){
     this.items.splice(this.items.indexOf(it),1);this.group.remove(it.mesh);
-    this.respawn.push({id:it.id,at:this.t+60+this.rand()*80});
+    this.respawn.push({id:it.id,at:this.t+(it.fixed?it.fixed.secs:60+this.rand()*80),fixed:it.fixed});
     const c=byId[it.id].color;this.fx.pixels.emit(new THREE.Vector3(it.x,it.y+.3,it.z),it.id==="pearl"||it.id==="coin"?24:10,[c,0xffffff],{speed:2.2,up:3.2,size:.09});
   }
   update(dt,px,pz){
     this.t+=dt;
-    for(let i=this.respawn.length-1;i>=0;i--)if(this.t>=this.respawn[i].at){this.spawn(this.respawn[i].id);this.respawn.splice(i,1)}
+    for(let i=this.respawn.length-1;i>=0;i--)if(this.t>=this.respawn[i].at){const r=this.respawn[i];if(r.fixed)this.addFixed(r.id,r.fixed.x,r.fixed.y,r.fixed.z,r.fixed.secs);else this.spawn(r.id);this.respawn.splice(i,1)}
     for(const it of this.items){
-      if(it.id==="coin"||it.id==="pearl"){
+      if(it.id==="coin"||it.id==="pearl"||it.id==="crystal"){
         it.mesh.rotation.y+=dt*1.2;
         if(Math.hypot(it.x-px,it.z-pz)<40&&Math.random()<dt*1.4)this.fx.pixels.emit(new THREE.Vector3(it.x,it.y+.35,it.z),1,[0xffffff,0xfff2a8],{speed:.5,up:1.4,size:.06,life:.8,gravity:-1});
       }

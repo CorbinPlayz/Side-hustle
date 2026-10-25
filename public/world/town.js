@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {heightAt,slopeAt} from "./terrain.js";
 import {PLOT_COUNT,GOALS} from "./economy.js";
+import {makeCharacter,animateCharacter,defaultLook} from "./character.js";
 export const PLOT=16; // metres per side (8 x 8 grid cells of 2 m)
 const lam=(c,o={})=>new THREE.MeshStandardMaterial({color:c,flatShading:true,roughness:.85,...o});
 const box=(w,h,d,m,x,y,z,parent)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);b.castShadow=true;b.receiveShadow=true;if(parent)parent.add(b);return b};
@@ -30,22 +31,13 @@ function signTexture(lines,bg="#8a5a2a"){
   lines.forEach((l,i)=>{g.font=(l.size||40)+"px Georgia,serif";g.fillText(l.t,128,l.y)});
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
-function person(color){
-  const g=new THREE.Group(),skin=lam(0xe3b186),shirt=lam(color),pants=lam(0x394a6a),hair=lam([0x3a2a1a,0x8a5a2a,0xd8b04a,0x1a1a1a][(color>>3)%4]);
-  box(.5,.65,.28,shirt,0,1.12,0,g);box(.32,.32,.3,skin,0,1.62,0,g);box(.34,.14,.32,hair,0,1.82,0,g);
-  const legL=new THREE.Group(),legR=new THREE.Group();legL.position.set(-.14,.8,0);legR.position.set(.14,.8,0);
-  box(.2,.8,.22,pants,0,-.4,0,legL);box(.2,.8,.22,pants,0,-.4,0,legR);g.add(legL,legR);
-  const armL=new THREE.Group(),armR=new THREE.Group();armL.position.set(-.34,1.4,0);armR.position.set(.34,1.4,0);
-  box(.16,.62,.18,shirt,0,-.3,0,armL);box(.16,.62,.18,shirt,0,-.3,0,armR);g.add(armL,armR);
-  g.userData={legL,legR,armL,armR};return g;
-}
-function cabin(color){
+export function cabin(color){
   const g=new THREE.Group(),wall=lam(0xc9a066),trim=lam(color),roof=lam(0x7a3b2a);
   box(6,.2,6,lam(0x8a6a44),0,.1,0,g);
   box(6,2.6,.2,wall,0,1.5,-2.9,g);box(.2,2.6,6,wall,-2.9,1.5,0,g);box(.2,2.6,6,wall,2.9,1.5,0,g);
   box(2.3,2.6,.2,wall,-1.85,1.5,2.9,g);box(2.3,2.6,.2,wall,1.85,1.5,2.9,g);box(1.4,.7,.2,wall,0,2.55,2.9,g);
   box(1.3,.12,.5,trim,0,2.2,3.05,g);
-  const r1=box(6.6,.18,3.6,roof,0,3.45,-1.55,g);r1.rotation.x=.5;const r2=box(6.6,.18,3.6,roof,0,3.45,1.55,g);r2.rotation.x=-.5;
+  const r1=box(6.8,.18,3.7,roof,0,3.5,-1.55,g);r1.rotation.x=-.5;const r2=box(6.8,.18,3.7,roof,0,3.5,1.55,g);r2.rotation.x=.5;box(6.8,.2,.3,lam(0x5a2a1d),0,3.95,0,g);box(.2,1.1,6,wall,-2.9,3.1,0,g);
   box(.9,1.2,.1,lam(0x9ad4f0,{emissive:0x335566}),-2.92,1.7,.2,g).rotation.y=Math.PI/2;
   return g;
 }
@@ -68,6 +60,11 @@ export class Town{
   /** Fell trees and pick mushrooms inside the plots so there is room to build. */
   clear(forest,mushrooms){
     const m=new THREE.Matrix4().makeScale(0,0,0),inside=(x,z)=>this.plots.some(p=>Math.abs(x-p.x)<PLOT/2+2.5&&Math.abs(z-p.z)<PLOT/2+2.5);
+    for(const g of forest.userData.trees){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
+    for(const n of mushrooms.userData.nodes){let ch=false;n.list.forEach((o,i)=>{if(inside(o.x,o.z)){o.alive=false;n.im.setMatrixAt(i,m);ch=true}});if(ch)n.im.instanceMatrix.needsUpdate=true}
+  }
+  clearCircle(forest,mushrooms,cx,cz,r){
+    const m=new THREE.Matrix4().makeScale(0,0,0),inside=(x,z)=>Math.hypot(x-cx,z-cz)<r;
     for(const g of forest.userData.trees){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
     for(const n of mushrooms.userData.nodes){let ch=false;n.list.forEach((o,i)=>{if(inside(o.x,o.z)){o.alive=false;n.im.setMatrixAt(i,m);ch=true}});if(ch)n.im.instanceMatrix.needsUpdate=true}
   }
@@ -103,7 +100,7 @@ export class Town{
     for(const [id,nv] of this.npcViews)if(!live.has(id)){this.scene.remove(nv.mesh);this.npcViews.delete(id)}
     for(const n of h.npcs){
       if(this.npcViews.has(n.id))continue;
-      const p=this.plots[n.plot],mesh=person(n.color);mesh.position.set(p.x+1,p.y,p.z+5);this.scene.add(mesh);
+      const p=this.plots[n.plot],mesh=makeCharacter(defaultLook(n.look||0),n.outfit||"villager");mesh.position.set(p.x+1,p.y,p.z+5);this.scene.add(mesh);
       this.npcViews.set(n.id,{mesh,home:p,target:null,wait:1+this.rand()*3,phase:this.rand()*6,going:false,visit:20+this.rand()*60});
     }
   }
@@ -125,9 +122,8 @@ export class Town{
         else{const sp=1.6*dt;pos.x+=dx/d*sp;pos.z+=dz/d*sp;m.rotation.y=Math.atan2(dx,dz);moving=true}
       }
       if(nv.back&&!nv.target){nv.back=false;nv.target=new THREE.Vector3(nv.home.x+(this.rand()-.5)*6,0,nv.home.z+(this.rand()-.5)*6)}
-      pos.y=Math.max(heightAt(pos.x,pos.z),.15)+(m.userData?0:0);
-      nv.phase+=moving?dt*7:0;const s=moving?Math.sin(nv.phase)*.7:0,u=m.userData;
-      u.legL.rotation.x=s;u.legR.rotation.x=-s;u.armL.rotation.x=-s*.8;u.armR.rotation.x=s*.8;
+      pos.y=Math.max(heightAt(pos.x,pos.z),.15);
+      animateCharacter(m,dt,moving?1:0,this.t);
     }
   }
 }

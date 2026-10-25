@@ -1,45 +1,57 @@
 /** Items, market prices, gear, housing market and the neighbours who move in. All numbers live here so they are easy to balance.
  *  Pacing target: first purchase ~15 min, first plot + cabin around the 1 hour mark. */
 export const FISH=[
-  {id:"sardine",name:"Sardine",base:9,weight:34,color:0x9bb8d2,belly:0xeaf2f8,len:.6,shape:"slim"},
-  {id:"perch",name:"Perch",base:16,weight:26,color:0x6a9a45,belly:0xe8dfa8,len:.7,shape:"deep",stripes:0x3f6a2a},
-  {id:"bass",name:"Bass",base:30,weight:18,color:0x56795a,belly:0xe0e8cc,len:.95,shape:"std",stripes:0x34503a},
-  {id:"trout",name:"Trout",base:48,weight:11,color:0xb5707a,belly:0xf5dfd3,len:1,shape:"std",spots:0x6b2f3a},
-  {id:"puffer",name:"Pufferfish",base:75,weight:6,color:0xd6a65a,belly:0xfff1c8,len:.8,shape:"round"},
-  {id:"tuna",name:"Tuna",base:110,weight:4,color:0x2f4f80,belly:0xd2dce8,len:1.5,shape:"torpedo"},
-  {id:"koi",name:"Golden Koi",base:320,weight:1,color:0xffb52e,belly:0xfff0b0,len:1.1,shape:"deep",spots:0xff6a2a}
+  {id:"sardine",name:"Sardine",base:7,weight:34,color:0x9bb8d2,belly:0xeaf2f8,len:.6,shape:"slim"},
+  {id:"perch",name:"Perch",base:12,weight:26,color:0x6a9a45,belly:0xe8dfa8,len:.7,shape:"deep",stripes:0x3f6a2a},
+  {id:"bass",name:"Bass",base:22,weight:18,color:0x56795a,belly:0xe0e8cc,len:.95,shape:"std",stripes:0x34503a},
+  {id:"trout",name:"Trout",base:36,weight:11,color:0xb5707a,belly:0xf5dfd3,len:1,shape:"std",spots:0x6b2f3a},
+  {id:"puffer",name:"Pufferfish",base:60,weight:6,color:0xd6a65a,belly:0xfff1c8,len:.8,shape:"round"},
+  {id:"tuna",name:"Tuna",base:90,weight:4,color:0x2f4f80,belly:0xd2dce8,len:1.5,shape:"torpedo"},
+  {id:"koi",name:"Golden Koi",base:260,weight:1,color:0xffb52e,belly:0xfff0b0,len:1.1,shape:"deep",spots:0xff6a2a}
 ];
 /** Things you pick up off the ground or get from trees. `find` says which spawner places them. */
 export const GOODS=[
-  {id:"shell",name:"Shell",base:3,kind:"find",find:"beach",color:0xf3c9b8},
-  {id:"driftwood",name:"Driftwood",base:4,kind:"find",find:"beach",color:0xb59a74},
-  {id:"bottle",name:"Old Bottle",base:6,kind:"find",find:"beach",color:0x6fd0a8},
-  {id:"can",name:"Tin Can",base:4,kind:"find",find:"junk",color:0xb9bfc7},
-  {id:"berries",name:"Wild Berries",base:7,kind:"find",find:"forage",color:0xb02e5e},
-  {id:"mushroom",name:"Red Mushroom",base:13,kind:"find",find:"forage",color:0xd8392f},
-  {id:"pearl",name:"Pearl",base:110,kind:"rare",find:"beach",color:0xfdf6ff},
-  {id:"coin",name:"Old Coin",base:65,kind:"rare",find:"junk",color:0xffc83a},
-  {id:"glowcap",name:"Glowcap",base:90,kind:"rare",find:"forage",color:0x4fe8ff},
-  {id:"pine_log",name:"Pine Log",base:20,kind:"wood"},
-  {id:"oak_log",name:"Oak Log",base:34,kind:"wood"}
+  {id:"shell",name:"Shell",base:2,kind:"find",find:"beach",color:0xf3c9b8},
+  {id:"driftwood",name:"Driftwood",base:3,kind:"find",find:"beach",color:0xb59a74},
+  {id:"bottle",name:"Old Bottle",base:5,kind:"find",find:"beach",color:0x6fd0a8},
+  {id:"can",name:"Tin Can",base:3,kind:"find",find:"junk",color:0xb9bfc7},
+  {id:"berries",name:"Wild Berries",base:5,kind:"find",find:"forage",color:0xb02e5e},
+  {id:"mushroom",name:"Red Mushroom",base:9,kind:"find",find:"forage",color:0xd8392f},
+  {id:"pearl",name:"Pearl",base:90,kind:"rare",find:"beach",color:0xfdf6ff},
+  {id:"coin",name:"Old Coin",base:55,kind:"rare",find:"junk",color:0xffc83a},
+  {id:"crystal",name:"Cave Crystal",base:120,kind:"rare",find:"junk",color:0x7ad8ff},
+  {id:"glowcap",name:"Glowcap",base:70,kind:"rare",find:"forage",color:0x4fe8ff},
+  {id:"pine_log",name:"Pine Log",base:14,kind:"wood"},
+  {id:"oak_log",name:"Oak Log",base:24,kind:"wood"}
 ];
 export const ALL=[...FISH,...GOODS];
 export const byId=Object.fromEntries(ALL.map(f=>[f.id,f]));
 /** One-off tools. You start with nothing. */
 export const TOOLS=[
-  {id:"rod",name:"Fishing rod",desc:"Cast at open water and catch fish worth more than anything on the beach.",cost:110},
-  {id:"axe",name:"Axe",desc:"Fell trees for logs. Pine and oak both sell.",cost:170}
+  {id:"rod",name:"Fishing rod",desc:"Cast at open water and catch fish worth more than anything on the beach.",cost:140},
+  {id:"axe",name:"Axe",desc:"Fell trees for logs. Pine and oak both sell.",cost:210}
 ];
 export const UPGRADES=[
-  {id:"bag",name:"Bigger bag",desc:"Carry more per trip",costs:[70,230,620,1500],max:4,needs:null},
+  {id:"bag",name:"Bigger bag",desc:"Carry more per trip",costs:[90,260,640,1500],max:4,needs:null},
   {id:"bait",name:"Better bait",desc:"Fish bite sooner and rarer fish show up",costs:[140,420,1000],max:3,needs:"rod"},
   {id:"boots",name:"Quick boots",desc:"Walk and run faster",costs:[120,360,900],max:3,needs:null},
   {id:"axe2",name:"Sharp axe",desc:"Trees fall in fewer chops, extra logs",costs:[260,760],max:2,needs:"axe"}
 ];
-export const BAG_CAP=[4,8,14,22,32];
+export const BAG_CAP=[4,6,9,13,18];
 /** Where the money goes. */
-export const GOALS={plot:850,boat:2600};
+export const GOALS={plot:1200,boat:4200};
 export const PLOT_COUNT=10;
+export const catOf=id=>{const g=byId[id];if(!g)return "fish";if(g.kind==="wood")return "wood";if(!g.kind)return "fish";return g.find==="forage"?"forage":g.find==="junk"?"junk":"beach"};
+export const CATS={
+  fish:{label:"fish",up:"Fish festival in town! Fish prices are up for a while.",down:"A fish glut: prices for fish are down for a while."},
+  wood:{label:"logs",up:"A big building project means logs are in demand.",down:"Too much timber around: log prices are down."},
+  forage:{label:"forage",up:"Everyone wants a good stew. Berries and mushrooms are up.",down:"Foragers flooded the market: berries and mushrooms are down."},
+  beach:{label:"beach finds",up:"Tourists are in. Shells and bottles are selling high.",down:"Quiet week for tourists. Beach finds are down."}
+};
+/** Where you sell changes the price: the village pays extra for wood and forage but less for fish. */
+export const LOCATIONS={dock:{name:"Dock Market",fish:1.1,wood:1,forage:1,beach:1,junk:1},village:{name:"Village Market",fish:.8,wood:1.3,forage:1.25,beach:.95,junk:1.15}};
+export const locMod=(id,loc)=>(LOCATIONS[loc]||LOCATIONS.dock)[catOf(id)];
+export const OUTFITS=["baker","fisher","lumberjack","sailor","keeper","villager","farmer"];
 const KEY="sidehustle.save.v2";
 const NAMES=["Maya","Theo","June","Otis","Priya","Leo","Nina","Hank","Sade","Wren"];
 const COLORS=[0xe5654a,0x4a8be5,0xe5b84a,0x6bbf5a,0xb36be0,0xe56ba8,0x4ac4c4,0xe58a3c];
@@ -53,14 +65,14 @@ export class Economy{
     this.money=0;this.bag=[];this.tools={rod:false,axe:false};this.up={bag:0,bait:0,boots:0,axe2:0};
     this.caught=0;this.earned=0;this.mult={};this.prev={};this.supply={};this.timer=0;
     // housing: price index, neighbours, plots (id -> owner). owner "me", "npc:<n>" or absent.
-    this.house={index:1,owners:{},npcs:[],recent:0,sinceNpc:0,log:[]};
+    this.house={index:1,owners:{},npcs:[],recent:0,sinceNpc:0,log:[]};this.event=null;this.nextEvent=6;
     this.pieces=[];this.myPlot=null;this.playSeconds=0;
   }
   get capacity(){return BAG_CAP[this.up.bag]}
   get speedMul(){return 1+this.up.boots*.14}
-  price(id){return Math.max(1,Math.round(byId[id].base*this.mult[id]))}
-  trend(id){const d=this.mult[id]-this.prev[id];return d>.02?1:d<-.02?-1:0}
-  value(f){return Math.max(1,Math.round(this.price(f.id)*(f.w||1)))}
+  price(id,loc="dock"){return Math.max(1,Math.round(byId[id].base*this.mult[id]*locMod(id,loc)))}
+  trend(id){const d=this.mult[id]-this.prev[id];return d>.012?1:d<-.012?-1:0}
+  value(f,loc="dock"){return Math.max(1,Math.round(this.price(f.id,loc)*(f.w||1)))}
   /** Max neighbours: grows slowly with how rich the players are, never beyond 8. */
   get npcCap(){return Math.min(8,2+Math.floor(this.earned/900))}
   plotPrice(id){
@@ -68,33 +80,42 @@ export class Economy{
     const k=1+((id*37)%10)/50;
     return Math.round(GOALS.plot*this.house.index*k/10)*10;
   }
-  /** One market tick (every 18 s): prices drift, neighbours buy goods, housing moves. Returns events to show. */
+  /** One market tick (every 30 s). Prices follow slow, readable rules: they ease back to normal, drop when you flood a
+   *  good, drift up when neighbours buy, and occasionally a town event pushes a whole category up or down for a few minutes. */
   tick(dt){
     const ev=[];this.timer+=dt;this.playSeconds+=dt;
-    for(const f of ALL)this.supply[f.id]=Math.max(0,this.supply[f.id]-dt*.012);
-    if(this.timer<18)return ev;
+    for(const f of ALL)this.supply[f.id]=Math.max(0,this.supply[f.id]-dt*.008);
+    if(this.timer<30)return ev;
     this.timer=0;const n=this.house.npcs.length;
+    // town events
+    const E=this.event;
+    if(E&&--E.left<=0){ev.push({type:"event",msg:`Prices for ${CATS[E.cat].label} are back to normal.`});this.event=null}
+    else if(!E&&--this.nextEvent<=0){
+      const cat=Object.keys(CATS)[(this.rand()*4)|0],up=this.rand()<.55;
+      this.event={cat,mod:up?.3:-.25,left:8};this.nextEvent=14+((this.rand()*10)|0);
+      ev.push({type:"event",msg:up?CATS[cat].up:CATS[cat].down});
+    }
     for(const f of ALL){
       this.prev[f.id]=this.mult[f.id];
-      // neighbours eat into the supply of everything, so a busy town keeps prices a bit higher
-      this.supply[f.id]=Math.max(0,this.supply[f.id]-n*.012);
-      const pull=(1-this.mult[f.id])*.18,noise=(this.rand()+this.rand()-1)*.24,bump=this.rand()<.05?(this.rand()<.5?.4:-.28):0;
-      this.mult[f.id]=Math.max(.45,Math.min(2.1,this.mult[f.id]+pull+noise+bump-this.supply[f.id]*.5+n*.004));
+      this.supply[f.id]=Math.max(0,this.supply[f.id]-n*.01);
+      const target=1+(this.event&&catOf(f.id)===this.event.cat?this.event.mod:0)+n*.012-this.supply[f.id]*.6;
+      const step=(target-this.mult[f.id])*.22+(this.rand()-.5)*.03;
+      this.mult[f.id]=Math.max(.55,Math.min(1.7,this.mult[f.id]+step));
     }
     const h=this.house;
     // housing market wobbles by itself, and drifts toward what the island earns
     h.index=Math.max(.8,h.index*(1+(this.rand()-.48)*.03));
     h.sinceNpc+=this.earned-(h._lastEarned||0);h._lastEarned=this.earned;
-    const need=300+n*420;
+    const need=500+n*650;
     if(n<this.npcCap&&h.sinceNpc>=need){
       const free=[];for(let i=0;i<PLOT_COUNT;i++)if(!h.owners[i])free.push(i);
       // keep at least one plot open for the players
       if(free.length>1){
         const plot=free[(this.rand()*free.length)|0],name=NAMES.find(x=>!h.npcs.some(p=>p.name===x))||"Guest"+n;
-        const npc={id:"n"+Date.now().toString(36)+n,name,plot,color:COLORS[n%COLORS.length]};
+        const npc={id:"n"+Date.now().toString(36)+n,name,plot,color:COLORS[n%COLORS.length],outfit:OUTFITS[(this.house.npcs.length+((this.rand()*3)|0))%OUTFITS.length],look:(this.rand()*1000)|0};
         h.npcs.push(npc);h.owners[plot]="npc:"+npc.id;h.sinceNpc=0;
         // every sale pushes the next one up harder than the last, but the neighbour cap keeps it from running away
-        h.index*=1.09+n*.018;
+        h.index*=1.07+n*.012;
         ev.push({type:"npc",npc,msg:`${name} bought a plot and moved in. Land prices jumped.`});
       }
     }
@@ -107,10 +128,10 @@ export class Economy{
   }
   addItem(id,w=1){if(this.bag.length>=this.capacity)return false;this.bag.push({id,w});return true}
   addFish(f){if(this.bag.length>=this.capacity)return false;this.bag.push(f);this.caught++;return true}
-  sellAll(){
+  sellAll(loc="dock"){
     let total=0;const counts={};
-    for(const f of this.bag){total+=this.value(f);counts[f.id]=(counts[f.id]||0)+1}
-    for(const id in counts)this.supply[id]+=counts[id]*.05; // flooding the market pushes the price down
+    for(const f of this.bag){total+=this.value(f,loc);counts[f.id]=(counts[f.id]||0)+1}
+    for(const id in counts)this.supply[id]+=counts[id]*.07; // flooding the market pushes the price down
     this.money+=total;this.earned+=total;this.recentSale=total;this.bag=[];this.save();return total;
   }
   toolCost(id){const t=TOOLS.find(x=>x.id===id);return this.tools[id]?null:t.cost}
@@ -122,7 +143,7 @@ export class Economy{
     if(this.myPlot!=null||this.house.owners[id])return false;const c=this.plotPrice(id);if(this.money<c)return false;
     this.money-=c;this.myPlot=id;this.house.owners[id]="me";this.save();return true;
   }
-  save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,t:Date.now(),money:this.money,bag:this.bag,tools:this.tools,up:this.up,caught:this.caught,earned:this.earned,house:this.house,pieces:this.pieces,myPlot:this.myPlot,playSeconds:this.playSeconds,mult:this.mult,supply:this.supply}));return true}catch(e){return false}}
+  save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,t:Date.now(),money:this.money,event:this.event,nextEvent:this.nextEvent,bag:this.bag,tools:this.tools,up:this.up,caught:this.caught,earned:this.earned,house:this.house,pieces:this.pieces,myPlot:this.myPlot,playSeconds:this.playSeconds,mult:this.mult,supply:this.supply}));return true}catch(e){return false}}
   load(){try{
     const s=JSON.parse(localStorage.getItem(KEY)||"null");if(!s||s.v!==2)return;
     this.money=s.money|0;this.bag=(s.bag||[]).filter(f=>byId[f.id]);Object.assign(this.tools,s.tools||{});Object.assign(this.up,s.up||{});
@@ -130,7 +151,7 @@ export class Economy{
     if(s.house)this.house={...this.house,...s.house};
     for(const id in (s.mult||{}))if(byId[id])this.mult[id]=s.mult[id],this.prev[id]=s.mult[id];
     for(const id in (s.supply||{}))if(byId[id])this.supply[id]=s.supply[id];
-    this.loaded=true;
+    this.event=s.event||null;if(s.nextEvent)this.nextEvent=s.nextEvent;this.loaded=true;
   }catch(e){}}
   reset(){this.fresh();ALL.forEach(f=>{this.mult[f.id]=1;this.prev[f.id]=1;this.supply[f.id]=0});this.save()}
 }

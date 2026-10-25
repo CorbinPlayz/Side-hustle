@@ -118,7 +118,7 @@ function labelTexture(lines,w=512,h=192,bg="#2a3d5c",fg="#ffffff"){
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
 }
 /** Fish market stall: counter, striped awning, sign, crates and barrels. Faces +z in local space. */
-export function buildStall(x,y,z,ry){
+export function buildStall(x,y,z,ry,label=["MARKET","sell here, press E"]){
   const grp=new THREE.Group();
   const parts=[];
   parts.push({geo:new THREE.BoxGeometry(5,1.1,1.6),color:0xa87a4a,m:M4(0,.55,0)});
@@ -133,7 +133,7 @@ export function buildStall(x,y,z,ry){
   [[-1.3,0xaec7da],[-.6,0x6f9a4b],[.1,0xb5707a],[.9,0x34527d]].forEach(([fx,c],i)=>parts.push({geo:new THREE.IcosahedronGeometry(.28,0),color:c,m:M4(fx,1.32,.1,1.6,.6,.8,i)}));
   const body=new THREE.Mesh(mergeParts(parts),new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.9}));
   body.castShadow=body.receiveShadow=true;grp.add(body);
-  const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.4,1.28),new THREE.MeshStandardMaterial({map:labelTexture(["MARKET","sell here, press E"]),roughness:.8}));
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.4,1.28),new THREE.MeshStandardMaterial({map:labelTexture(label),roughness:.8}));
   sign.position.set(0,2.55,.95);sign.rotation.x=-.12;grp.add(sign);
   grp.position.set(x,y,z);grp.rotation.y=ry;
   return grp;
