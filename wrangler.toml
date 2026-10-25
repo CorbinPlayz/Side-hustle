@@ -1,0 +1,27 @@
+name = "side-hustle"
+main = "worker/src/index.mjs"
+compatibility_date = "2025-03-01"
+
+# The website files. The Worker runs first so it can check the login before sending anything.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "Hub"
+
+[[durable_objects.bindings]]
+name = "MATCH"
+class_name = "Match"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Hub", "Match"]
+
+[vars]
+# The admin is the account with this user ID. Leave 0 until you have registered; your ID is shown on the "waiting for approval" screen.
+ADMIN_ID = "0"
+# Optional invite code: if you set one, people need it to create an account. Leave empty for open sign-up (you still approve each person).
+SIGNUP_CODE = ""
