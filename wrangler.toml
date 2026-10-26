@@ -27,3 +27,6 @@ new_sqlite_classes = ["Hub", "Match"]
 ADMIN_ID = "0"
 # Optional invite code: if you set one, people need it to create an account. Leave empty for open sign-up (you still approve each person).
 SIGNUP_CODE = ""
+
+[observability]
+enabled = false
