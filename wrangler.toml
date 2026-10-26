@@ -27,7 +27,8 @@ new_sqlite_classes = ["Hub", "Match"]
 
 [vars]
 # The admin is the account with this user ID. Leave 0 until you have registered; your ID is shown on the "waiting for approval" screen.
-ADMIN_ID = "0"
+ADMIN_ID = "1"
+# Second lock for the admin panel: add a secret named ADMIN_KEY in the Cloudflare dashboard (Settings > Variables and Secrets, type Secret). When it exists, the admin page asks for it.
 # Optional invite code: if you set one, people need it to create an account. Leave empty for open sign-up (you still approve each person).
 SIGNUP_CODE = ""
 

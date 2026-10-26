@@ -18,14 +18,18 @@ function decorate(p){
  p.lo=Data.sanitizeLoadout(p.loadout);
  return p;
 }
-function api(path,body){
+function adminKey(){try{return sessionStorage.getItem("sh.adminkey")||""}catch(e){return ""}}
+function api(path,body,retried){
  var o={credentials:"same-origin",headers:{}};
+ if(path.indexOf("/api/admin/")===0){var k=adminKey();if(k)o.headers["X-Admin-Key"]=k}
  if(body!==undefined){o.method="POST";o.headers["Content-Type"]="application/json";o.body=JSON.stringify(body)}
  return fetch(path,o).then(function(r){
   var ct=r.headers.get("content-type")||"";
   if(ct.indexOf("json")<0){var e=new Error("no-api");e.noApi=true;throw e}
   return r.json().then(function(j){
-   if(!r.ok){var er=new Error(j&&j.error||"Something went wrong.");er.status=r.status;throw er}
+   if(!r.ok){
+    if(j&&j.needKey&&!retried){var k=window.prompt("Admin key (the ADMIN_KEY secret you set in Cloudflare):");if(k){try{sessionStorage.setItem("sh.adminkey",k)}catch(e){}return api(path,body,true)}}
+    var er=new Error(j&&j.error||"Something went wrong.");er.status=r.status;throw er}
    return j;
   });
  });

@@ -20,6 +20,8 @@ function getCookie(req,name){
   return null;
 }
 function setCookie(token,maxAge){return `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`}
+/** Second lock on the admin API: if ADMIN_KEY is set (as a secret in the dashboard), every admin request must carry it. */
+function sameKey(a,b){if(a.length!==b.length)return false;let d=0;for(let i=0;i<a.length;i++)d|=a.charCodeAt(i)^b.charCodeAt(i);return d===0}
 function sameOrigin(req){
   const o=req.headers.get("Origin");
   return !o||o===new URL(req.url).origin;
@@ -124,6 +126,10 @@ export default {
       if(me.status!=="approved"&&!path.startsWith("/api/admin"))return json({error:"Your account is not approved."},403);
       if(path==="/api/loadout"&&request.method==="POST"){const b=await readJson(request);return reply(await hub(env,"saveLoadout",me.id,b.loadout))}
       if(path==="/api/leaderboard"){return reply(await hub(env,"leaderboard",url.searchParams.get("sort"),parseInt(url.searchParams.get("limit"),10)||50))}
+      if(path.startsWith("/api/admin")&&env.ADMIN_KEY){
+        const k=request.headers.get("X-Admin-Key")||"";
+        if(!sameKey(k,String(env.ADMIN_KEY)))return json({error:"Admin key needed.",needKey:true},401);
+      }
       if(path==="/api/admin/users"){return reply(await hub(env,"adminList",me.id))}
       if(path==="/api/admin/status"&&request.method==="POST"){const b=await readJson(request);return reply(await hub(env,"adminSetStatus",me.id,b.id|0,b.status))}
       return json({error:"Not found."},404);
