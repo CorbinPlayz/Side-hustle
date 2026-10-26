@@ -37,18 +37,24 @@ function windify(mat,uniforms,strength){
 
 export function buildForest(rand,uniforms){
   const group=new THREE.Group();
-  // --- pine tree geometry
+  // shared helpers: nudge vertices by a position hash (so shared corners move together) and darken low / lighten high
+  const lump=(g,amt)=>{const p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
+    const k=(a)=>hash2(Math.round(x*50)+a,Math.round(y*50)+a*3,Math.round(z*50)-a)-.5;p.setXYZ(i,x+k(1)*amt,y+k(2)*amt,z+k(3)*amt)}g.computeVertexNormals();return g};
+  const grade=(g,y0,y1,lo,hi)=>{const p=g.attributes.position,c=g.attributes.color;for(let i=0;i<p.count;i++){const t=Math.max(0,Math.min(1,(p.getY(i)-y0)/(y1-y0))),f=lo+(hi-lo)*t;c.setXYZ(i,c.getX(i)*f,c.getY(i)*f,c.getZ(i)*f)}return g};
+  // --- pine tree: flared trunk, five ragged tiers
   const pine=[];
-  pine.push({geo:new THREE.CylinderGeometry(.35,.5,3.2,6),color:0x8a6040,m:M4(0,1.6,0)});
-  [[3.2,2.7,3.6,0x2f7d3c],[2.5,2.4,5.6,0x39903f],[1.7,2.1,7.5,0x47a447]].forEach(([r,h,y,c])=>pine.push({geo:new THREE.ConeGeometry(r,h*1.3,7),color:c,m:M4(0,y,0)}));
-  const pineGeo=mergeParts(pine);
-  // --- round tree
+  pine.push({geo:new THREE.CylinderGeometry(.3,.62,3.4,7),color:0x6e4a2e,m:M4(0,1.7,0)});
+  pine.push({geo:new THREE.CylinderGeometry(.5,.8,.5,7),color:0x5e3f27,m:M4(0,.2,0)});
+  [[3.4,2.6,2.7,0x27703a],[2.9,2.4,4.0,0x2f7f3c],[2.3,2.2,5.3,0x378e40],[1.7,2.0,6.5,0x40a046],[1.05,1.8,7.6,0x4db04c]].forEach(([r,h,y,c],i)=>pine.push({geo:new THREE.ConeGeometry(r,h*1.25,i%2?7:8),color:c,m:M4(0,y,0,1,1,1,i*.7)}));
+  const pineGeo=grade(lump(mergeParts(pine),.22),0,9,.78,1.12);
+  // --- oak: stout trunk with a bough, clustered lumpy crown
   const oak=[];
-  oak.push({geo:new THREE.CylinderGeometry(.4,.6,3.4,6),color:0x946a45,m:M4(0,1.7,0)});
-  [[2.8,4.6,0,0x5bb347],[2.2,6.1,.9,0x6cc455],[2.0,5.3,-1.1,0x52a840]].forEach(([r,y,x,c])=>oak.push({geo:new THREE.IcosahedronGeometry(r,0),color:c,m:M4(x,y,x*.3)}));
-  const oakGeo=mergeParts(oak);
+  oak.push({geo:new THREE.CylinderGeometry(.38,.66,3.6,7),color:0x7d5636,m:M4(0,1.8,0)});
+  oak.push({geo:new THREE.CylinderGeometry(.14,.24,1.6,5),color:0x7d5636,m:new THREE.Matrix4().compose(new THREE.Vector3(.55,3.5,0),new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),-.7),new THREE.Vector3(1,1,1))});
+  [[2.7,4.8,0,0,0x4fa843],[2.1,6.2,.9,.4,0x62bb4e],[2.0,5.4,-1.3,-.5,0x4a9c40],[1.7,5.6,1.5,-.9,0x58b049],[1.6,6.9,-.5,.5,0x76cc5a],[1.5,4.3,.4,1.3,0x429238]].forEach(([r,y,x,z,c])=>oak.push({geo:new THREE.IcosahedronGeometry(r,1),color:c,m:M4(x,y,z)}));
+  const oakGeo=grade(lump(mergeParts(oak),.3),2.5,8.5,.8,1.14);
   // --- rocks
-  const rockGeo=mergeParts([{geo:new THREE.DodecahedronGeometry(1,0),color:0x9a948a,m:M4(0,.3,0,1.2,.8,1)},{geo:new THREE.IcosahedronGeometry(.7,0),color:0x857f76,m:M4(.8,.1,.3)}]);
+  const rockGeo=grade(lump(mergeParts([{geo:new THREE.DodecahedronGeometry(1,1),color:0x9a948a,m:M4(0,.3,0,1.25,.8,1)},{geo:new THREE.DodecahedronGeometry(.62,0),color:0x7f796f,m:M4(.85,.05,.3)},{geo:new THREE.DodecahedronGeometry(.4,0),color:0xaaa397,m:M4(-.8,0,-.4)}]),.16),-.3,1.1,.75,1.15);
   const mkMat=()=>{const m=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.9});return m};
   const pineMat=mkMat(),oakMat=mkMat();windify(pineMat,uniforms,1);windify(oakMat,uniforms,1.2);
   const trees=[],oaks=[],rocks=[],grass=[],flowers=[];
@@ -65,12 +71,14 @@ export function buildForest(rand,uniforms){
     const a=rand()*6.283,r=60+rand()*220,x=Math.cos(a)*r,z=Math.sin(a)*r,h=heightAt(x,z);
     if(h>-.3&&h<1.4&&rocks.length<260)rocks.push([x,h-.1,z,.4+rand()*1.1,rand()*6.28]);
   }
-  for(let i=0;i<60000&&grass.length<26000;i++){
+  for(let i=0;i<90000&&grass.length<42000;i++){
     const x=(rand()-.5)*420,z=(rand()-.5)*420,h=heightAt(x,z);
     if(h<2.2||slopeAt(x,z)>.55)continue;
-    if(fbm(x*.05,z*.05,77,2)<.38)continue;
-    grass.push([x,h-.05,z,.6+rand()*.8,rand()*6.28]);
-    if(rand()<.06)flowers.push([x+rand(),h,z+rand(),rand()]);
+    const patch=fbm(x*.05,z*.05,77,2);if(patch<.34)continue;
+    const clump=fbm(x*.35,z*.35,12,2); // grass grows in clumps with bare gaps between
+    if(clump<.36&&rand()<.8)continue;
+    grass.push([x,h-.05,z,(.55+rand()*.9)*(.7+patch*.6),rand()*6.28]);
+    if(rand()<.05)flowers.push([x+rand(),h,z+rand(),rand()]);
   }
   function inst(geo,mat,list,colors,shadow=true){
     const im=new THREE.InstancedMesh(geo,mat,list.length);const m=new THREE.Matrix4(),c=new THREE.Color();
@@ -85,14 +93,21 @@ export function buildForest(rand,uniforms){
   }
   const pineIm=inst(pineGeo,pineMat,trees),oakIm=inst(oakGeo,oakMat,oaks);
   group.add(pineIm,oakIm,inst(rockGeo,mkMat(),rocks));
-  group.userData.trees=[{kind:"pine_log",im:pineIm,list:trees},{kind:"oak_log",im:oakIm,list:oaks}];
-  // grass blades: tall thin triangles, pixel-ish colours
-  const blade=mergeParts([{geo:new THREE.ConeGeometry(.09,1,3),color:0xffffff,m:M4(0,.5,0)},{geo:new THREE.ConeGeometry(.08,.8,3),color:0xdfffd0,m:M4(.18,.4,.1)},{geo:new THREE.ConeGeometry(.08,.7,3),color:0xcff0bd,m:M4(-.16,.35,-.1)}]);
+  group.userData.trees=[{kind:"pine_log",im:pineIm,list:trees},{kind:"oak_log",im:oakIm,list:oaks}];group.userData.rocks=rocks;
+  // grass tuft: several bent blades, dark at the root and bright at the tip
+  const tuft=(()=>{const P=[],Cc=[],blades=[[0,0,1,.0],[.14,.05,.8,1.2],[-.13,.04,.9,2.3],[.05,-.14,.65,3.6],[-.07,.13,.75,4.7],[.2,-.08,.5,5.5]];
+    for(const [ox,oz,hh,ang] of blades){const ca=Math.cos(ang),sa=Math.sin(ang),w=.075,lean=.18*hh;
+      const pt=(x,y,z)=>[ox+x*ca-z*sa+ (sa*lean*(y>.5?1:0)),y*hh,oz+x*sa+z*ca+(-ca*lean*(y>.5?1:0))];
+      const tri=[pt(-w,0,0),pt(w,0,0),pt(0,1,0)],cl=[[.55,.62,.5],[.55,.62,.5],[1.15,1.15,1.05]];
+      for(let k=0;k<3;k++){P.push(...tri[k]);Cc.push(...cl[k])}
+      for(let k=2;k>=0;k--){P.push(...tri[k]);Cc.push(...cl[k])}}
+    const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(P,3));g.setAttribute("color",new THREE.Float32BufferAttribute(Cc,3));g.computeVertexNormals();return g})();
+  const blade=tuft;
   const gMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1});windify(gMat,uniforms,2.2);
-  const gm=inst(blade,gMat,grass,(o,i)=>new THREE.Color().setHSL(.27+hash2(i,4,4)*.05,.55,.38+hash2(i,6,1)*.14),false);gm.receiveShadow=false;
+  const gm=inst(blade,gMat,grass,(o,i)=>new THREE.Color().setHSL(.23+hash2(i,4,4)*.1,.6,.36+hash2(i,6,1)*.16),false);gm.receiveShadow=false;
   group.add(gm);
   // pixel flowers: small cubes
-  const fGeo=mergeParts([{geo:new THREE.BoxGeometry(.28,.28,.28),color:0xffffff,m:M4(0,.75,0)},{geo:new THREE.BoxGeometry(.06,.7,.06),color:0x3c8a3a,m:M4(0,.35,0)}]);
+  const fGeo=mergeParts([{geo:new THREE.BoxGeometry(.34,.08,.12),color:0xffffff,m:M4(0,.78,0)},{geo:new THREE.BoxGeometry(.12,.08,.34),color:0xffffff,m:M4(0,.78,0)},{geo:new THREE.BoxGeometry(.12,.1,.12),color:0xffd23a,m:M4(0,.82,0)},{geo:new THREE.BoxGeometry(.05,.75,.05),color:0x3c8a3a,m:M4(0,.37,0)}]);
   const FC=[0xe86bd0,0xb26bff,0xffd23a,0xff6b6b,0xffffff];
   const fm=inst(fGeo,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true}),flowers.map(f=>[f[0],f[1],f[2],.45,f[3]*6]),(o,i)=>new THREE.Color(FC[i%FC.length]),false);
   group.add(fm);

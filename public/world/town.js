@@ -51,7 +51,7 @@ export class Town{
     for(const p of this.plots){
       const v={plot:p,group:new THREE.Group(),sign:null,kind:null,tex:null};v.group.position.set(p.x,0,p.z);this.group.add(v.group);
       // lawn pad and corner posts
-      const pad=box(PLOT,1.6,PLOT,lam(0x78b84a),0,p.y-.8,0,v.group);pad.castShadow=false;
+      const R=PLOT/2*Math.SQRT2,pad=new THREE.Mesh(new THREE.CylinderGeometry(R,R+3.2,2.4,4,1),lam(0x7cbc4a));pad.rotation.y=Math.PI/4;pad.position.set(0,p.y-1.2,0);pad.receiveShadow=true;v.group.add(pad); // sloped skirt so it blends into the hill
       for(const sx of [-1,1])for(const sz of [-1,1])box(.22,1.1,.22,lam(0x8a5a2a),sx*PLOT/2,p.y+.5,sz*PLOT/2,v.group);
       this.views.set(p.id,v);
     }

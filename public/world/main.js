@@ -10,6 +10,7 @@ import {createHands} from "./hands.js";
 import {Fishing} from "./fishing.js";
 import {createPost} from "./post.js";
 import {Jobs} from "./jobs.js";
+import {makeCollider} from "./collide.js";
 import {mulberry} from "./noise.js";
 import {Pickups} from "./pickups.js";
 import {Town} from "./town.js";
@@ -68,6 +69,7 @@ const jobs=new Jobs({camera,hands,fx,hud,eco,forest,mushrooms});
 const town=new Town({scene,eco,forest,mushrooms,stallPos,rand:mulberry(WORLD.seed+77),fx});
 const pickups=new Pickups({scene,rand:mulberry(Date.now()&0xfffff),fx,avoid:(x,z)=>!!town.plotAt(x,z,4)||Math.hypot(x-stallPos.x,z-stallPos.z)<8||onDock(x,z)});
 const builder=new Builder({scene,camera,eco,hud,town,fx});
+const solid=makeCollider(forest,[-1.9,0,1.9].map(o=>({x:stallPos.x+Math.cos(dockRot)*o,z:stallPos.z-Math.sin(dockRot)*o,r:1.15})));
 const poi=new POIs({scene,rand:mulberry(WORLD.seed+5),pickups,fx,dockA,stallPos,avoid:(x,z)=>!!town.plotAt(x,z,8)});
 town.clearCircle(forest,mushrooms,poi.cave.x,poi.cave.z,15);town.clearCircle(forest,mushrooms,poi.village.x,poi.village.z,26);town.clearCircle(forest,mushrooms,poi.lighthouse.x,poi.lighthouse.z,8);
 const HINTS=[
@@ -209,7 +211,7 @@ function frame(now){
     player.yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*1.8*dt;player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch+((keys.ArrowUp?1:0)-(keys.ArrowDown?1:0))*1.4*dt));
     const f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),sp=((player.sprint||keys.ShiftLeft)?9.5:5)*eco.speedMul*dt*(fishing.state==="reeling"?.3:1)*(hud.marketOpen?0:1);
     const mx=(-Math.sin(player.yaw)*f+Math.cos(player.yaw)*r)*sp,mz=(-Math.cos(player.yaw)*f-Math.sin(player.yaw)*r)*sp;
-    const ok=(x,z)=>(onDock(x,z)||heightAt(x,z)>-.9)&&!builder.blocked(x,z)&&!poi.blocked(x,z);
+    const ok=(x,z)=>(onDock(x,z)||heightAt(x,z)>-.9)&&!builder.blocked(x,z)&&!poi.blocked(x,z)&&!solid.blocked(x,z);
     if(ok(player.x+mx,player.z+mz)){player.x+=mx;player.z+=mz}else if(ok(player.x+mx,player.z)){player.x+=mx}else if(ok(player.x,player.z+mz)){player.z+=mz}
     fishing.walk=Math.min(1,Math.hypot(mx,mz)/(dt*9*eco.speedMul));
     if(!f&&!r&&player.sprint&&!keys.ShiftLeft){player.idle=(player.idle||0)+dt;if(player.idle>.35)player.sprint=false}else player.idle=0;
@@ -248,7 +250,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__ready=true;window.__dev={poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
+window.__ready=true;window.__dev={solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
   advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);pickups.update(1/30,player.x,player.z);town.update(1/30);poi.update(1/30);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
 
 // autosave: every 8 seconds, when the tab is hidden, and when it closes
