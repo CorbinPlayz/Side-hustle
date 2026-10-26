@@ -97,6 +97,11 @@ export default {
     const token=getCookie(request,COOKIE);
     const who=async()=>{const r=await hub(env,"session",token);return r.ok?r.data:null};
 
+    if(path==="/__diag"){
+      // public self-check: shows what the asset store answers for the login page, without any login
+      const probe=async(p)=>{try{const r=await env.ASSETS.fetch(new Request(new URL(p,url)));return {status:r.status,location:r.headers.get("location"),type:r.headers.get("content-type")}}catch(e){return {error:String(e)}}};
+      return json({ok:true,path,loginHtml:await probe("/login.html"),login:await probe("/login"),root:await probe("/"),indexHtml:await probe("/index.html"),adminIdSet:(parseInt(env.ADMIN_ID,10)||0)>0});
+    }
     if(path.startsWith("/api/")){
       if(request.method!=="GET"&&!sameOrigin(request))return json({error:"Bad origin."},403);
       if(path==="/api/register"&&request.method==="POST"){
