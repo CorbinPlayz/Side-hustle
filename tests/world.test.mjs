@@ -1,0 +1,16 @@
+import {WorldCore} from "../worker/src/worldcore.mjs";
+let bad=0;const ok=(c,m)=>{if(!c){console.log("FAIL",m);bad++}};
+const mk=(id)=>{const log=[];return {id,uid:id,name:"P"+id,send:o=>log.push(o),close:()=>log.push({closed:1}),log}};
+const w=new WorldCore(),cs=[1,2,3,4,5,6,7].map(mk);
+cs.forEach(c=>w.join(c));
+ok(w.count===6,"max 6 players");ok(cs[6].log.some(m=>m.t==="error"),"7th player rejected");
+w.message(1,{t:"pos",x:5,y:1,z:2,yaw:1,tool:0});w.tick(.1);
+ok(cs[1].log.some(m=>m.t==="snap"&&m.players.find(p=>p.id===1&&p.x===5)),"positions broadcast");
+const before=w.eco.mult.sardine;w.message(1,{t:"sell",loc:"dock",items:Array(20).fill({id:"sardine",w:1})});
+ok(cs[0].log.find(m=>m.t==="sold").total>0,"server prices a sale");ok(w.eco.supply.sardine>0,"sale adds supply");
+w.message(1,{t:"sell",items:[{id:"nope",w:1}]});ok(cs[0].log.filter(m=>m.t==="sold").pop().total===0,"unknown items ignored");
+w.message(2,{t:"plotBuy",plot:3});ok(w.eco.house.owners[3]==="p:2","plot claimed");
+w.message(3,{t:"plotBuy",plot:3});ok(w.eco.house.owners[3]==="p:2","plot cannot be stolen");
+w.leave(2);ok(!w.eco.house.owners[3],"plot freed when owner leaves");
+for(let i=0;i<40;i++)w.tick(1);ok(cs[0].log.some(m=>m.t==="market"),"market updates are pushed");
+console.log(bad?"world tests FAILED":"world tests passed");process.exit(bad?1:0);
