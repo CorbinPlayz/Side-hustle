@@ -32,13 +32,24 @@ function signTexture(lines,bg="#8a5a2a"){
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
 export function cabin(color){
-  const g=new THREE.Group(),wall=lam(0xc9a066),trim=lam(color),roof=lam(0x7a3b2a);
-  box(6,.2,6,lam(0x8a6a44),0,.1,0,g);
-  box(6,2.6,.2,wall,0,1.5,-2.9,g);box(.2,2.6,6,wall,-2.9,1.5,0,g);box(.2,2.6,6,wall,2.9,1.5,0,g);
-  box(2.3,2.6,.2,wall,-1.85,1.5,2.9,g);box(2.3,2.6,.2,wall,1.85,1.5,2.9,g);box(1.4,.7,.2,wall,0,2.55,2.9,g);
-  box(1.3,.12,.5,trim,0,2.2,3.05,g);
-  const r1=box(6.8,.18,3.7,roof,0,3.5,-1.55,g);r1.rotation.x=-.5;const r2=box(6.8,.18,3.7,roof,0,3.5,1.55,g);r2.rotation.x=.5;box(6.8,.2,.3,lam(0x5a2a1d),0,3.95,0,g);box(.2,1.1,6,wall,-2.9,3.1,0,g);
-  box(.9,1.2,.1,lam(0x9ad4f0,{emissive:0x335566}),-2.92,1.7,.2,g).rotation.y=Math.PI/2;
+  const g=new THREE.Group(),wall=lam(0xc9a066),log=lam(0xb08a52),dark=lam(0x7a5a34),trim=lam(color),roof=lam(0x7a3b2a),roof2=lam(0x8a4632),stone=lam(0x8d877c),glass=lam(0xa8dcf2,{emissive:0x335566});
+  box(6.4,.5,6.4,stone,0,.15,0,g);box(6,.12,6,lam(0x8a6a44),0,.42,0,g);
+  const W=(w,h,d,x,y,z)=>box(w,h,d,wall,x,y,z,g);
+  W(6,2.6,.2,0,1.8,-2.9);W(.2,2.6,6,-2.9,1.8,0);W(.2,2.6,6,2.9,1.8,0);
+  W(2.3,2.6,.2,-1.85,1.8,2.9);W(2.3,2.6,.2,1.85,1.8,2.9);W(1.4,.7,.2,0,2.85,2.9);
+  // log bands, corner posts, window frames
+  for(const y of [.95,1.55,2.15,2.75]){box(6.1,.1,.08,log,0,y+.3,-3.02,g);box(.08,.1,6.1,log,-3.02,y+.3,0,g);box(.08,.1,6.1,log,3.02,y+.3,0,g);box(2.3,.1,.08,log,-1.85,y+.3,3.02,g);box(2.3,.1,.08,log,1.85,y+.3,3.02,g)}
+  for(const sx of [-1,1])for(const sz of [-1,1])box(.34,2.8,.34,dark,sx*2.95,1.8,sz*2.95,g);
+  box(1.5,.14,.5,trim,0,2.62,3.05,g);box(.14,2.2,.14,dark,-.78,1.6,3.0,g);box(.14,2.2,.14,dark,.78,1.6,3.0,g);
+  for(const x of [-1.9,1.9]){box(.95,.8,.1,glass,x,2.0,3.0,g);box(1.1,.1,.16,trim,x,2.5,3.02,g);box(1.1,.1,.16,trim,x,1.55,3.02,g);box(.07,.8,.12,dark,x,2.0,3.04,g)}
+  for(const z of [-1.2,1.2]){box(.1,.8,.95,glass,-2.96,2.0,z,g);box(.1,.8,.95,glass,2.96,2.0,z,g)}
+  // gable triangles front and back
+  const sh=new THREE.Shape();sh.moveTo(-3.2,0);sh.lineTo(3.2,0);sh.lineTo(0,1.7);sh.closePath();
+  for(const z of [-3,3]){const tri=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.18,bevelEnabled:false}),wall);tri.position.set(0,3.1+.05,z-.09);tri.castShadow=true;g.add(tri)}
+  box(.7,.5,.1,glass,0,3.7,3.1,g);
+  // roof with overhang, ridge and a chimney
+  const r1=box(7,.2,3.9,roof,0,4.0,-1.65,g);r1.rotation.x=-.5;const r2=box(7,.2,3.9,roof2,0,4.0,1.65,g);r2.rotation.x=.5;
+  box(7.1,.22,.34,lam(0x5a2a1d),0,4.85,0,g);box(.8,2.2,.8,stone,1.9,4.4,-1.2,g);box(1,.14,1,dark,1.9,5.55,-1.2,g);
   return g;
 }
 export class Town{
@@ -61,10 +72,12 @@ export class Town{
   clear(forest,mushrooms){
     const m=new THREE.Matrix4().makeScale(0,0,0),inside=(x,z)=>this.plots.some(p=>Math.abs(x-p.x)<PLOT/2+2.5&&Math.abs(z-p.z)<PLOT/2+2.5);
     for(const g of forest.userData.trees){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
+    {const G=forest.userData.grassIm;if(G&&G.im){G.list.forEach((o,i)=>{if(inside(o[0],o[2]))G.im.setMatrixAt(i,m)});G.im.instanceMatrix.needsUpdate=true}}
     for(const n of mushrooms.userData.nodes){let ch=false;n.list.forEach((o,i)=>{if(inside(o.x,o.z)){o.alive=false;n.im.setMatrixAt(i,m);ch=true}});if(ch)n.im.instanceMatrix.needsUpdate=true}
   }
   clearCircle(forest,mushrooms,cx,cz,r){
     const m=new THREE.Matrix4().makeScale(0,0,0),inside=(x,z)=>Math.hypot(x-cx,z-cz)<r;
+    {const G=forest.userData.grassIm;if(G&&G.im){G.list.forEach((o,i)=>{if(Math.hypot(o[0]-cx,o[2]-cz)<r*.78)G.im.setMatrixAt(i,m)});G.im.instanceMatrix.needsUpdate=true}}
     for(const g of forest.userData.trees){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
     for(const n of mushrooms.userData.nodes){let ch=false;n.list.forEach((o,i)=>{if(inside(o.x,o.z)){o.alive=false;n.im.setMatrixAt(i,m);ch=true}});if(ch)n.im.instanceMatrix.needsUpdate=true}
   }

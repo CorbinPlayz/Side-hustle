@@ -93,7 +93,7 @@ export function buildForest(rand,uniforms){
   }
   const pineIm=inst(pineGeo,pineMat,trees),oakIm=inst(oakGeo,oakMat,oaks);
   group.add(pineIm,oakIm,inst(rockGeo,mkMat(),rocks));
-  group.userData.trees=[{kind:"pine_log",im:pineIm,list:trees},{kind:"oak_log",im:oakIm,list:oaks}];group.userData.rocks=rocks;
+  group.userData.trees=[{kind:"pine_log",im:pineIm,list:trees},{kind:"oak_log",im:oakIm,list:oaks}];group.userData.rocks=rocks;group.userData.grassIm={im:null,list:grass};
   // grass tuft: several bent blades, dark at the root and bright at the tip
   const tuft=(()=>{const P=[],Cc=[],blades=[[0,0,1,.0],[.14,.05,.8,1.2],[-.13,.04,.9,2.3],[.05,-.14,.65,3.6],[-.07,.13,.75,4.7],[.2,-.08,.5,5.5]];
     for(const [ox,oz,hh,ang] of blades){const ca=Math.cos(ang),sa=Math.sin(ang),w=.075,lean=.18*hh;
@@ -105,7 +105,7 @@ export function buildForest(rand,uniforms){
   const blade=tuft;
   const gMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1});windify(gMat,uniforms,2.2);
   const gm=inst(blade,gMat,grass,(o,i)=>new THREE.Color().setHSL(.23+hash2(i,4,4)*.1,.6,.36+hash2(i,6,1)*.16),false);gm.receiveShadow=false;
-  group.add(gm);
+  group.add(gm);group.userData.grassIm.im=gm;
   // pixel flowers: small cubes
   const fGeo=mergeParts([{geo:new THREE.BoxGeometry(.34,.08,.12),color:0xffffff,m:M4(0,.78,0)},{geo:new THREE.BoxGeometry(.12,.08,.34),color:0xffffff,m:M4(0,.78,0)},{geo:new THREE.BoxGeometry(.12,.1,.12),color:0xffd23a,m:M4(0,.82,0)},{geo:new THREE.BoxGeometry(.05,.75,.05),color:0x3c8a3a,m:M4(0,.37,0)}]);
   const FC=[0xe86bd0,0xb26bff,0xffd23a,0xff6b6b,0xffffff];

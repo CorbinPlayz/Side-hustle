@@ -250,7 +250,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__ready=true;window.__dev={solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
+window.__ready=true;window.__H=heightAt;window.__dev={solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
   advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);pickups.update(1/30,player.x,player.z);town.update(1/30);poi.update(1/30);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
 
 // autosave: every 8 seconds, when the tab is hidden, and when it closes
