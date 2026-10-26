@@ -156,7 +156,7 @@ export default {
     if(!allowed){
       me=await who();
       if(!me||me.status!=="approved"){
-        const dest="/login.html?next="+encodeURIComponent(path==="/"?"/index.html":path.replace(/^\//,"")+url.search);
+        const dest="/login.html?next="+encodeURIComponent(path==="/"?"world.html":path.replace(/^\//,"")+url.search);
         return new Response(null,{status:302,headers:{Location:dest,"Cache-Control":"no-store",...SECURITY}});
       }
       if((path==="/admin.html"||path==="/admin")&&!me.is_admin)return new Response("Not found",{status:404,headers:SECURITY});

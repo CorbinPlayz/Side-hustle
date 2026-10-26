@@ -28,7 +28,7 @@ Site.nav=function(){
  return root.Backend.init().then(function(r){
   if(box){
    if(r.profile&&(r.state==="ok"||r.state==="demo")){
-    box.innerHTML='<span class="lvl">'+r.profile.level+'</span><a href="play.html">'+Site.esc(r.profile.username)+'</a>'+(r.profile.is_admin?'<a href="admin.html">admin</a>':'');
+    box.innerHTML='<span class="lvl">'+r.profile.level+'</span><a href="world.html">'+Site.esc(r.profile.username)+'</a>'+(r.profile.is_admin?'<a href="admin.html">admin</a>':'');
    }else box.innerHTML='<a class="btn" href="login.html">Sign in</a>';
   }
   return r;
