@@ -60,7 +60,7 @@ Open `world.html` (the front page redirects there). You start with nothing.
 - **Grow:** buy a fishing rod ($110) or an axe ($170), a bigger bag, bait, boots. Fishing and logging are plain clicks, no minigames.
 - **Spend it:** buy a house plot (about $850) and build on a snap grid (press 3; G turns snapping off). A boat to reach the next biome is the next goal.
 - **Neighbours:** as the island earns money, NPC neighbours buy plots and move in. Each sale pushes land prices up harder than the last, and they buy goods too, which keeps market prices healthier. The number of neighbours is capped.
-- **Landmarks:** a lighthouse you can climb, a shipwreck full of bottles, coins and pearls, a waterfall cave with crystals and glowcaps, and a village with its own market (pays more for logs and forage, less for fish). Press Tab to see where they are.
+- **Landmarks:** a lighthouse you can climb, a shipwreck full of bottles, coins and pearls, a waterfall cave with crystals and glowcaps, and a village with its own market (pays more for logs and forage, less for fish). Press Tab to see where they are. Space jumps, Shift toggles sprint, B toggles build, and with empty hands you can punch (neighbours stumble back).
 - **Characters:** press C to make your character (hair, hat, eyes, teeth, outfit). Neighbours and villagers use the same character model with NPC-only outfits.
 - **Prices:** move slowly and predictably, with a town news line explaining events like a fish festival. Selling a lot of one thing drops its price.
 - **Autosave:** progress saves every 8 seconds, when you switch tabs, and when you close the page (in this browser for now; account saves come with the Cloudflare version).

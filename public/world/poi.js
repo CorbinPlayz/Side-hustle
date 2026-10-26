@@ -42,60 +42,119 @@ export class POIs{
   }
   buildWreck(){
     const a=this.dockA-1.55,r=this.coastPoint(a)-2,x=Math.cos(a)*r,z=Math.sin(a)*r,y=heightAt(x,z);
-    const g=new THREE.Group();g.position.set(x,y,z);g.rotation.y=-a+Math.PI/2+.4;this.group.add(g);
-    const wood=[lam(0x7a5a38),lam(0x6a4c30),lam(0x8a6a44)],plank=()=>wood[(this.rand()*3)|0];
-    add(g,new THREE.BoxGeometry(1,.35,9),wood[1],0,.1,0,.08,0,.05); // keel
-    for(let i=0;i<9;i++){const z0=-4+i,w=1.4+Math.sin(i/8*Math.PI)*1.5;
-      for(const s of [-1,1]){if(this.rand()<.18)continue;add(g,new THREE.BoxGeometry(.18,1.1+this.rand()*.5,1),plank(),s*w*.5,.75,z0,0,0,-s*.35)}
-      add(g,new THREE.BoxGeometry(w*.9,.14,.8),plank(),0,.12,z0);
-      if(i%2===0)for(const s of [-1,1])add(g,new THREE.BoxGeometry(.14,1.9,.14),wood[0],s*w*.52,1.0,z0,0,0,-s*.38);
+    const g=new THREE.Group();g.position.set(x,y-.55,z);g.rotation.set(0,-a+Math.PI/2+.4,0);this.group.add(g);
+    const ship=new THREE.Group();ship.rotation.set(.07,0,.3);ship.scale.setScalar(1.3);g.add(ship); // listing on the sand, bow up a bit
+    const rand=this.rand,N=15,K=9,L=11;
+    const woods=[0x7b5a38,0x6d4e31,0x8a6844,0x5f452c].map(c=>new THREE.Color(c));
+    const hull=(scale,inner)=>{
+      const rows=[];
+      for(let i=0;i<=N;i++){const t=i/N,zz=(t-.5)*L;
+        let w=2.15*Math.pow(Math.sin(Math.PI*(.1+.84*t)),.6)*(1-.88*Math.pow(t,4));w=Math.max(.12,w)*scale;
+        const h=(1.55+1.1*Math.pow(t,3)+.25*(1-t))*scale,keel=(.55+.4*Math.sin(Math.PI*t))*scale;
+        const row=[];for(let k=0;k<K;k++){const th=-Math.PI/2+k/(K-1)*Math.PI,c=Math.pow(Math.max(0,Math.cos(th)),.75);row.push(new THREE.Vector3(w*Math.sin(th),h*(1-c)-keel*.0+(inner?.12:0),zz))}
+        rows.push(row)}
+      return rows};
+    const outer=hull(1,false),innerR=hull(.9,true);
+    const pos=[],col=[];const tri=(a,b,c,colr)=>{for(const q of [a,b,c])pos.push(q.x,q.y,q.z);for(let i=0;i<3;i++)col.push(colr.r,colr.g,colr.b)};
+    const shade=(c,k)=>c.clone().multiplyScalar(k);
+    for(let i=0;i<N;i++)for(let k=0;k<K-1;k++){
+      const t=i/N,broken=(t>.42&&t<.7&&k>4&&((i*7+k*3)%5<3))||(t>.78&&k>5&&(i%3===0));
+      const c=shade(woods[(k+(i>>1))%4],.85+rand()*.3);
+      if(!broken){tri(outer[i][k],outer[i+1][k],outer[i][k+1],c);tri(outer[i][k+1],outer[i+1][k],outer[i+1][k+1],c)}
+      const ci=shade(woods[3],.8+rand()*.25);
+      if(!broken){tri(innerR[i][k],innerR[i][k+1],innerR[i+1][k],ci);tri(innerR[i][k+1],innerR[i+1][k+1],innerR[i+1][k],ci)}
     }
-    add(g,new THREE.BoxGeometry(.5,.5,2.4),wood[0],0,1.4,-4.6,-.5,0,0); // bow
-    add(g,new THREE.CylinderGeometry(.14,.2,6,6),wood[0],.3,3,.4,.0,0,.5); // snapped mast
-    add(g,new THREE.PlaneGeometry(2.4,3),lam(0xe9dfc8,{side:THREE.DoubleSide}),1.4,3.4,.4,0,.4,.5);
-    add(g,new THREE.TorusGeometry(.5,.07,5,10),lam(0xb8473a),-1.6,.5,2.5,Math.PI/2,0,0);
-    this.blockers.push({x,z,r:2.4,oval:{a:g.rotation.y,hl:4.6,hw:1.6}});this.add("Shipwreck",x,z,y);
-    const spots=[[0,0],[-.8,-2],[.8,2.2],[0,3.5],[1.6,-1.2],[-1.4,1.2]];
+    // stern transom and bow stem
+    const tr=[outer[0][0],outer[0][K-1],innerR[0][K-1],innerR[0][0]];tri(outer[0][0],outer[0][K-1],outer[0][4],woods[1]);tri(outer[0][0],outer[0][4],outer[0][K-1],woods[1]);
+    const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));gg.setAttribute("color",new THREE.Float32BufferAttribute(col,3));gg.computeVertexNormals();
+    const hm=new THREE.Mesh(gg,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.9,side:THREE.DoubleSide}));hm.castShadow=hm.receiveShadow=true;ship.add(hm);
+    // ribs showing through the broken side, a keel beam and gunwale rails
+    const dark=lam(0x4a3522),mid=lam(0x6a4a30);
+    for(let i=1;i<N-1;i+=2){const t=i/N;if(t<.38||t>.78)continue;for(let k=0;k<K-1;k++){const p0=innerR[i][k],p1=innerR[i][k+1],d=p1.clone().sub(p0),len=d.length();
+      const m=add(ship,new THREE.BoxGeometry(.13,.13,len+.05),dark,(p0.x+p1.x)/2,(p0.y+p1.y)/2,(p0.z+p1.z)/2);m.lookAt(ship.localToWorld(p1.clone()));m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.clone().normalize())}}
+    add(ship,new THREE.BoxGeometry(.28,.3,L*.9),dark,0,-.02,0);
+    // deck planks over the stern and a stern cabin with a broken roof
+    for(let i=0;i<5;i++)add(ship,new THREE.BoxGeometry(2.5-i*.05,.1,.8),mid,0,1.05,-L/2+.8+i*.95,0,0,(rand()-.5)*.08);
+    add(ship,new THREE.BoxGeometry(.18,1.6,2.8),mid,-1.55,1.9,-3.7);add(ship,new THREE.BoxGeometry(.18,1.3,2.8),mid,1.55,1.75,-3.7,0,0,.06);add(ship,new THREE.BoxGeometry(3.2,1.7,.18),mid,0,1.9,-5.1);
+    for(let i=0;i<3;i++)add(ship,new THREE.BoxGeometry(3.4,.1,.8),dark,(rand()-.5)*.6,2.78+i*.02,-4.7+i*1.1,0,0,.12);
+    add(ship,new THREE.BoxGeometry(.7,.9,.5),lam(0x5aa0c8,{emissive:0x153a55}),0,2.1,-5.2); // cabin window
+    // mast stump, boom and a torn sail
+    add(ship,new THREE.CylinderGeometry(.16,.24,5.6,7),mid,.1,3.5,.9,.08,0,.3);
+    add(ship,new THREE.CylinderGeometry(.08,.1,4.2,6),mid,1.7,5.3,.5,0,0,Math.PI/2-.2);
+    {const sg=new THREE.PlaneGeometry(3,3.4,5,6),sp=sg.attributes.position;for(let i=0;i<sp.count;i++){const yy=sp.getY(i);sp.setZ(i,Math.sin(sp.getX(i)*2+yy)*.25+(rand()-.5)*.1);if(yy<-.6&&rand()<.55)sp.setY(i,yy+rand()*1.1)}sg.computeVertexNormals();
+     add(ship,sg,lam(0xe6dcc2,{side:THREE.DoubleSide}),.5,4.3,.6,.0,Math.PI/2-.2,.1)}
+    // props: barrels, a chest, an anchor, a rudder, rope coil
+    for(const [bx,bz,s] of [[.7,-1.4,1],[-.4,-2.4,.9]]){add(ship,new THREE.CylinderGeometry(.4*s,.34*s,.85*s,9),lam(0x8a5a30),bx,.55+.43*s,bz);for(const yy of [.25,.7])add(ship,new THREE.CylinderGeometry(.42*s,.42*s,.07,9),lam(0x3a3a40),bx,.55+yy*s,bz)}
+    add(ship,new THREE.BoxGeometry(1,.6,.7),lam(0x7a4a28),.2,.7,2.3,0,.3,0);add(ship,new THREE.BoxGeometry(1.05,.18,.75),lam(0x5a3a20),.2,1.08,2.3,0,.3,0);add(ship,new THREE.BoxGeometry(.2,.2,.1),lam(0xe0b030),.2,.95,2.64,0,.3,0);
+    {const an=new THREE.Group();add(an,new THREE.CylinderGeometry(.07,.07,1.6,6),lam(0x3a3a40),0,0,0);add(an,new THREE.TorusGeometry(.55,.07,5,10,Math.PI),lam(0x3a3a40),0,-.8,0,0,0,Math.PI);add(an,new THREE.BoxGeometry(.7,.1,.1),lam(0x3a3a40),0,.6,0);an.position.set(2.6,.5,3.8);an.rotation.set(.2,.4,1.1);g.add(an)}
+    add(ship,new THREE.BoxGeometry(.12,1.8,1.1),mid,0,.6,-L/2-.3,0,0,.15);
+    // sand piled against the hull
+    for(let i=0;i<7;i++){const sa=i/7*6.28,m=add(g,new THREE.IcosahedronGeometry(1.8,1),lam(0xdcc98f),Math.cos(sa)*2.6,.1,Math.sin(sa)*5.5,0,0,0,1,.35,1,false)}
+    this.blockers.push({x,z,r:2.4,oval:{a:g.rotation.y,hl:4.8,hw:1.8}});this.add("Shipwreck",x,z,y);
+    const spots=[[0,0.5],[-.8,-1.5],[.5,2.6],[.2,-3.6],[1.2,-.6],[-1,1.8]];
     spots.forEach(([lx,lz],i)=>{const c=Math.cos(g.rotation.y),s=Math.sin(g.rotation.y),wx=x+lx*c+lz*s,wz=z-lx*s+lz*c;this.pickups.addFixed(["bottle","coin","pearl","bottle","coin","shell"][i],wx,Math.max(y,heightAt(wx,wz))+.12,wz,240)});
     return {x,z};
   }
+  rockDome(R,hs,opts={}){
+    // a hollow, flat-shaded rock shell. Optional doorway facing `face` (radians).
+    const {nu=18,nv=8,face=null,door=.27,noise=.55,moss=true}=opts,rand=this.rand;
+    const pos=[],col=[],ring=[];
+    const grid=[];for(let j=0;j<=nv;j++){const row=[];const ph=j/nv*(Math.PI*.5*.98);for(let i=0;i<nu;i++){const th=i/nu*Math.PI*2,k=(j===nv?0:1)*(1+(rand()-.5)*noise*.5);const rr=R*Math.sin(ph)*(1+(rand()-.5)*noise*.4)+0;const yy=R*hs*Math.cos(ph)*(1+(rand()-.5)*noise*.3);row.push(new THREE.Vector3(Math.cos(th)*rr,yy-(j===nv?.4:0),Math.sin(th)*rr))}grid.push(row)}
+    for(let i=0;i<nu;i++)grid[0][i].copy(grid[0][0]).y+=0; // single apex
+    const greys=[0x8c8a84,0x7a7a7c,0x9a968a,0x6f6f72].map(c=>new THREE.Color(c)),mossC=new THREE.Color(0x5f8a4a);
+    for(let j=0;j<nv;j++)for(let i=0;i<nu;i++){
+      const i2=(i+1)%nu,a=grid[j][i],b=grid[j][i2],c=grid[j+1][i2],d=grid[j+1][i];
+      const thc=(i+.5)/nu*Math.PI*2;
+      if(face!==null&&j>=Math.floor(nv*.38)){let da=Math.atan2(Math.sin(thc-face),Math.cos(thc-face));if(Math.abs(da)<door*(1.3-j/nv*.5)+(j===nv-1?0:0))continue}
+      const base=greys[(rand()*4)|0].clone().multiplyScalar(.82+rand()*.3);
+      const up=(j<nv*.6)&&moss&&rand()<.55;if(up)base.lerp(mossC,.55);
+      for(const [p,q,r2] of [[a,b,d],[b,c,d]])for(const v of [p,q,r2]){pos.push(v.x,v.y,v.z);col.push(base.r,base.g,base.b)}
+    }
+    const geo=new THREE.BufferGeometry();geo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));geo.setAttribute("color",new THREE.Float32BufferAttribute(col,3));geo.computeVertexNormals();
+    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,side:THREE.DoubleSide}));m.castShadow=m.receiveShadow=true;return m;
+  }
   buildCave(){
-    // a hill inland: boulder dome with a doorway, a cliff behind it and a waterfall into a pool
     let spot=null;
     for(let k=0;k<6000&&!spot;k++){
-      const a=this.rand()*6.283,r=60+this.rand()*130,cx=Math.cos(a)*r,cz=Math.sin(a)*r,f=flatSpot(cx,cz,12,2);
-      if(f.mean>7&&f.mean<16&&f.rng<1.6&&Math.hypot(cx-this.stallPos.x,cz-this.stallPos.z)>70&&!this.avoid(cx,cz))spot={x:cx,z:cz,y:f.hi};
+      const a=this.rand()*6.283,r=60+this.rand()*130,cx=Math.cos(a)*r,cz=Math.sin(a)*r,f=flatSpot(cx,cz,16,2);
+      if(f.mean>7&&f.mean<16&&f.rng<1.8&&Math.hypot(cx-this.stallPos.x,cz-this.stallPos.z)>70&&!this.avoid(cx,cz))spot={x:cx,z:cz,y:f.hi};
     }
     if(!spot){const a=.5;spot={x:Math.cos(a)*150,z:Math.sin(a)*150,y:heightAt(Math.cos(a)*150,Math.sin(a)*150)}}
-    const {x,z,y}=spot,face=Math.atan2(this.stallPos.z-z,this.stallPos.x-x); // doorway faces the market
+    const {x,z,y}=spot,face=Math.atan2(this.stallPos.z-z,this.stallPos.x-x),back=face+Math.PI;
     const g=new THREE.Group();g.position.set(x,y,z);this.group.add(g);
-    const R=4.6,n=15;
-    for(let i=0;i<n;i++){const a=i/n*6.283;if(Math.abs(norm(a-face))<.62)continue;
-      boulder(g,2.1+this.rand()*.7,Math.cos(a)*R,1.1,Math.sin(a)*R,this.rand,1.45);boulder(g,1.8+this.rand()*.6,Math.cos(a+.2)*(R-.4),3.2,Math.sin(a+.2)*(R-.4),this.rand,1)}
-    for(let i=0;i<5;i++){const a=i/5*6.283;boulder(g,2.3,Math.cos(a)*1.9,4.4,Math.sin(a)*1.9,this.rand,.9)}
-    // arch over the doorway
-    for(const s of [-1,1]){const a=face+s*.5;boulder(g,1.2,Math.cos(a)*R,1.5,Math.sin(a)*R,this.rand,1.9)}
-    boulder(g,1.3,Math.cos(face)*R,4.2,Math.sin(face)*R,this.rand,.7);
-    // cliff behind with waterfall
-    const back=face+Math.PI,cd=11,bx=Math.cos(back)*cd,bz=Math.sin(back)*cd;
-    const cliff=add(g,new THREE.BoxGeometry(22,15,5),rockM[1],bx,7.2,bz,0,-back+Math.PI/2,0);
-    for(let i=0;i<9;i++){const t=(i/8-.5)*20,tx=Math.cos(back+Math.PI/2)*t,tz=Math.sin(back+Math.PI/2)*t;boulder(g,2.4+this.rand()*1.6,bx+tx,14.5+this.rand()*1.2,bz+tz,this.rand,.9);boulder(g,2.2,bx+tx*1.02-Math.cos(back)*2.2,1.5+this.rand()*3,bz+tz*1.02-Math.sin(back)*2.2,this.rand,1.4)}
-    const lat=5.5,fd=cd-2.6;
-    const fx0=Math.cos(back)*fd+Math.cos(back+Math.PI/2)*lat,fz0=Math.sin(back)*fd+Math.sin(back+Math.PI/2)*lat;
+    const R=6.6;
+    // cave shell with a doorway, a dark floor and a rim of rubble so it sits in the ground
+    g.add(this.rockDome(R,.62,{nu:20,nv:9,face,door:.25,noise:.5}));
+    add(g,new THREE.CircleGeometry(R-.4,16),lam(0x3b3a3a),0,.06,0,-Math.PI/2,0,0,1,1,1,false);
+    for(let i=0;i<14;i++){const a=i/14*6.283;if(Math.abs(norm(a-face))<.3)continue;boulder(g,1+this.rand()*.9,Math.cos(a)*(R+.2),.2,Math.sin(a)*(R+.2),this.rand,.8)}
+    // doorway frame: two pillars and a lintel
+    for(const s of [-1,1]){const aa=face+s*.31;boulder(g,1.15,Math.cos(aa)*(R-.6),1.3,Math.sin(aa)*(R-.6),this.rand,1.7)}
+    boulder(g,1.2,Math.cos(face)*(R-.8),3.3,Math.sin(face)*(R-.8),this.rand,.65);
+    // stalactites and glowing crystals inside
+    for(let i=0;i<14;i++){const a=this.rand()*6.283,rr=this.rand()*R*.6;add(g,new THREE.ConeGeometry(.16+this.rand()*.14,.7+this.rand()*.8,5),lam(0x8a8680),Math.cos(a)*rr,R*.62*Math.cos(Math.asin(Math.min(.95,rr/R)))-.5,Math.sin(a)*rr,Math.PI,0,0)}
+    const cm=lam(0x7ad8ff,{emissive:0x2a9ac8,emissiveIntensity:1.1,roughness:.2});
+    for(let c=0;c<5;c++){const ca=back+(c-2)*.55,cr=R*.62;for(let q=0;q<4;q++)add(g,new THREE.ConeGeometry(.2+this.rand()*.12,.9+this.rand()*1.1,5),cm,Math.cos(ca)*cr+(this.rand()-.5)*.8,.5+this.rand()*.3,Math.sin(ca)*cr+(this.rand()-.5)*.8,(this.rand()-.5)*.6,0,(this.rand()-.5)*.6)}
+    const L=new THREE.PointLight(0x5ad8ff,36,16);L.position.set(0,2.4,0);g.add(L);
+    // cliff behind with a waterfall into a pool
+    const cd=R+7.2,cx2=Math.cos(back)*cd,cz2=Math.sin(back)*cd,CR=8.5,CH=15;
+    {const cg=new THREE.CylinderGeometry(CR*.82,CR,CH,11,3,false),cp=cg.attributes.position;
+     for(let i=0;i<cp.count;i++){const px=cp.getX(i),pz=cp.getZ(i),ang=Math.atan2(pz,px),fa=Math.abs(norm(ang-(face-back+Math.PI)));const fk=Math.max(0,1-fa/.7);const k=1+(this.rand()-.5)*.14*(1-fk*.9);cp.setX(i,px*k);cp.setZ(i,pz*k);if(cp.getY(i)>0)cp.setY(i,cp.getY(i)+(this.rand()-.5)*1.4*(1-fk))}
+     const ccols=[];const cn=cg.toNonIndexed();const cpos=cn.attributes.position;for(let i=0;i<cpos.count;i+=3){const kk=.8+this.rand()*.3,top=(cpos.getY(i)+cpos.getY(i+1)+cpos.getY(i+2))/3>CH*.35;const c=new THREE.Color(top&&this.rand()<.5?0x5f8a4a:0x85837d).multiplyScalar(kk);for(let q=0;q<3;q++)ccols.push(c.r,c.g,c.b)}
+     cn.setAttribute("color",new THREE.Float32BufferAttribute(ccols,3));cn.computeVertexNormals();
+     const cm2=new THREE.Mesh(cn,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95}));cm2.castShadow=cm2.receiveShadow=true;cm2.position.set(cx2,CH/2,cz2);cm2.rotation.y=-(back+Math.PI)+Math.PI;g.add(cm2);
+    }
+    const wfx=cx2+Math.cos(face)*(CR*.8)*1.0,wfz=cz2+Math.sin(face)*(CR*.8)*1.0;
     const wfM=new THREE.ShaderMaterial({transparent:true,side:THREE.DoubleSide,depthWrite:false,uniforms:{uTime:{value:0}},
       vertexShader:"varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
-      fragmentShader:"varying vec2 vUv;uniform float uTime;float h(float n){return fract(sin(n)*43758.5);}void main(){float col=floor(vUv.x*9.);float s=h(col)*.6+.5;float f=fract(vUv.y*3.2*s+uTime*(1.1+h(col+3.)*.6));float streak=smoothstep(.0,.35,f)*.5+.35;float edge=smoothstep(0.,.12,vUv.x)*smoothstep(1.,.88,vUv.x);vec3 c=mix(vec3(.45,.78,.95),vec3(1.),streak);gl_FragColor=vec4(c,(.6+.3*streak)*edge);}"});
-    this.waterfall=wfM;const wf=new THREE.Mesh(new THREE.PlaneGeometry(3,14.4),wfM);wf.position.set(fx0,7.4,fz0);wf.lookAt(new THREE.Vector3(fx0+Math.cos(face)*10,7.4,fz0+Math.sin(face)*10));g.add(wf);
-    const px0=fx0+Math.cos(face)*2.6,pz0=fz0+Math.sin(face)*2.6;
-    add(g,new THREE.CircleGeometry(3.4,10),lam(0x4aa8d8,{transparent:true,opacity:.88,roughness:.2}),px0,.14,pz0,-Math.PI/2,0,0,1,1,1,false);
-    this.misty.push(new THREE.Vector3(x+px0-Math.cos(face)*1.2,y+.4,z+pz0-Math.sin(face)*1.2));
-    // glow inside
-    const L=new THREE.PointLight(0x5ad8ff,28,13);L.position.set(0,2,0);g.add(L);
-    for(let i=0;i<6;i++){const a=i*1.05+.5,rr=2.6+this.rand()*.6;add(g,new THREE.ConeGeometry(.22,.9+this.rand()*.6,5),lam(0x7ad8ff,{emissive:0x2a9ac8,emissiveIntensity:1}),Math.cos(a)*rr,.45,Math.sin(a)*rr,(this.rand()-.5)*.5,0,(this.rand()-.5)*.5)}
-    // the walls stop you, the doorway does not
-    this.blockers.push({x,z,ring:{r:R,half:1.1,face,gap:.4}});this.blockers.push({x:x+bx,z:z+bz,r:9});
+      fragmentShader:"varying vec2 vUv;uniform float uTime;float h(float n){return fract(sin(n)*43758.5);}void main(){float col=floor(vUv.x*9.);float s=h(col)*.6+.5;float f=fract(vUv.y*3.2*s+uTime*(1.1+h(col+3.)*.6));float streak=smoothstep(.0,.35,f)*.5+.35;float edge=smoothstep(0.,.12,vUv.x)*smoothstep(1.,.88,vUv.x);vec3 c=mix(vec3(.45,.78,.95),vec3(1.),streak);gl_FragColor=vec4(c,(.65+.3*streak)*edge);}"});
+    this.waterfall=wfM;const wf=new THREE.Mesh(new THREE.PlaneGeometry(3.2,CH-.4),wfM);wf.position.set(wfx+Math.cos(face)*.5,CH/2,wfz+Math.sin(face)*.5);wf.lookAt(new THREE.Vector3(wfx+Math.cos(face)*20,CH/2,wfz+Math.sin(face)*20));g.add(wf);
+    const px0=wfx+Math.cos(face)*2.6,pz0=wfz+Math.sin(face)*2.6;
+    add(g,new THREE.CircleGeometry(3.6,12),lam(0x4aa8d8,{transparent:true,opacity:.88,roughness:.2}),px0,.14,pz0,-Math.PI/2,0,0,1,1,1,false);
+    for(let i=0;i<9;i++){const a=i/9*6.283;boulder(g,.5+this.rand()*.4,px0+Math.cos(a)*3.9,.2,pz0+Math.sin(a)*3.9,this.rand,.7)}
+    this.misty.push(new THREE.Vector3(x+wfx+Math.cos(face)*1.2,y+.5,z+wfz+Math.sin(face)*1.2));
+    this.blockers.push({x,z,ring:{r:R,half:1.1,face,gap:.33}});this.blockers.push({x:x+cx2,z:z+cz2,r:CR+.5});
     this.add("Waterfall cave",x,z,y);
-    const inner=[[0,0],[1.6,1.1],[-1.4,1.5],[.4,-2],[-2,-.6]];
+    const inner=[[0,0],[2.4,1.5],[-2.2,2],[.6,-3],[-3,-.8]].map(([lx,lz])=>[lx*.9,lz*.9]);
     inner.forEach(([lx,lz],i)=>{this.pickups.addFixed(i<3?"crystal":"glowcap",x+lx,Math.max(y,heightAt(x+lx,z+lz))+.1,z+lz,i<3?420:300)});
     return {x,z,y};
   }
@@ -138,12 +197,19 @@ export class POIs{
     }
     return false;
   }
+  punchAt(x,z,dx,dz){
+    const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;let best=null,bd=2.5;
+    for(const v of this.villagers){const px=v.mesh.position.x-x,pz=v.mesh.position.z-z,d=Math.hypot(px,pz);if(d<bd&&(px*dx+pz*dz)/(d||1)>.45){bd=d;best=v}}
+    if(best){best.stun=.9;best.kx=dx*6.5;best.kz=dz*6.5;best.mesh.userData.hit=.5;best.target=null;best.wait=1.6}
+    return best;
+  }
   update(dt){
     this.t+=dt;if(this.waterfall)this.waterfall.uniforms.uTime.value=this.t;
     for(const m of this.misty)if(Math.random()<dt*10)this.fx.pixels.emit(m,2,[0xffffff,0xcfeeff],{speed:1,up:1.6,size:.14,life:1.1,gravity:-.4});
     if(this.beam)this.beam.intensity=34+Math.sin(this.t*2)*8;
     for(const v of this.villagers){
       const m=v.mesh,p=m.position;let moving=false;
+      if(v.stun>0){v.stun-=dt;const nx=p.x+v.kx*dt,nz=p.z+v.kz*dt;if(!this.blocked(nx,nz)){p.x=nx;p.z=nz}v.kx*=Math.max(0,1-dt*5);v.kz*=Math.max(0,1-dt*5);p.y=Math.max(heightAt(p.x,p.z),.15);animateCharacter(m,dt,0,this.t);continue}
       if(!v.target){v.wait-=dt;if(v.wait<=0){const a=this.rand()*6.283,r=3+this.rand()*13;v.target={x:v.home.x+Math.cos(a)*r,z:v.home.z+Math.sin(a)*r};if(this.blocked(v.target.x,v.target.z))v.target=null;else v.wait=0}}
       if(v.target){const dx=v.target.x-p.x,dz=v.target.z-p.z,d=Math.hypot(dx,dz);if(d<.4){v.target=null;v.wait=2+this.rand()*6}else{const nx=p.x+dx/d*1.5*dt,nz=p.z+dz/d*1.5*dt;if(this.blocked(nx,nz)){v.target=null;v.wait=1}else{p.x=nx;p.z=nz;m.rotation.y=Math.atan2(dx,dz);moving=true}}}
       p.y=Math.max(heightAt(p.x,p.z),.15);animateCharacter(m,dt,moving?1:0,this.t);

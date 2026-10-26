@@ -77,15 +77,18 @@ const HINTS=[
   ()=>"Walk up to things on the ground and press E to pick them up."
 ];
 const TITLES=["Fishing","Logging","Building","Hands"];
+const visibleTools=()=>[...(eco.tools.rod?[0]:[]),...(eco.tools.axe?[1]:[]),...(eco.myPlot!=null?[2]:[]),3];
 function setTool(i){
+  if(i===0&&!eco.tools.rod){hud.toast("You don't have a rod yet. Buy one at the market.","#ff7b6b");return}
+  if(i===1&&!eco.tools.axe){hud.toast("You don't have an axe yet. Buy one at the market.","#ff7b6b");return}
   if(fishing.busy&&i!==0){hud.toast("Finish fishing first.");return}
   if(i===2&&eco.myPlot==null){hud.toast("Buy a house plot first. Look for a FOR SALE sign.","#ff7b6b");return}
-  jobs.tool=i;hands.setTool(i);hud.select(i);builder.setActive(i===2);hud.hint(HINTS[i](),TITLES[i]);
+  jobs.tool=i;hands.setTool(i);hud.select(i);if(i!==3)hands.equip&&hands.equip();builder.setActive(i===2);hud.hint(HINTS[i](),TITLES[i]);
 }
 function refreshMoney(){hud.money(eco.money,eco.bag.length,eco.capacity)}
 refreshMoney();
-jobs.tool=3;hands.setTool(3);hud.select(3);
-hud.hint(eco.loaded?"Welcome back. Press Tab any time to see where the landmarks are, and C to change how your character looks. Your progress was saved. Walk up to things on the ground and press E to pick them up, then sell them at the market stall.":"You start with nothing. Walk along the beach and press E to pick up shells, bottles and driftwood, then sell them at the market stall near the dock. WASD to move, Shift to run.","Side Hustle");
+jobs.tool=3;hands.setTool(3);hud.select(3);hud.slots(visibleTools(),3);
+hud.hint(eco.loaded?"Welcome back. Space jumps, Shift toggles sprint. Press Tab any time to see where the landmarks are, and C to change how your character looks. Your progress was saved. Walk up to things on the ground and press E to pick them up, then sell them at the market stall.":"You start with nothing. Walk along the beach and press E to pick up shells, bottles and driftwood, then sell them at the market stall near the dock. WASD to move, Shift to run.","Side Hustle");
 // camera: shots for review, or free fly
 const q=new URLSearchParams(location.search),shot=q.get("shot"),FIXED=q.has("fixed");
 if(q.has("lq")){renderer.shadowMap.enabled=false;renderer.setPixelRatio(1)}
@@ -95,7 +98,7 @@ const SHOTS={
   3:()=>({p:[-60,40,150],look:[20,6,-40]}),
   4:()=>({p:[dx+Math.cos(dockA)*5,2.4,dz+Math.sin(dockA)*5+0],look:[dx-Math.cos(dockA)*30,5,dz-Math.sin(dockA)*30]})
 };
-const player={x:dockPos.x+Math.cos(dockA)*(DOCK_LEN*.9),z:dockPos.z+Math.sin(dockA)*(DOCK_LEN*.9),yaw:Math.atan2(-Math.cos(dockA),-Math.sin(dockA)),pitch:-.28,y:0};
+const player={jy:0,vy:0,sprint:false,shiftDown:0,x:dockPos.x+Math.cos(dockA)*(DOCK_LEN*.9),z:dockPos.z+Math.sin(dockA)*(DOCK_LEN*.9),yaw:Math.atan2(-Math.cos(dockA),-Math.sin(dockA)),pitch:-.28,y:0};
 function placeSun(c){
   sun.position.copy(c).addScaledVector(SUN_DIR,260);sun.target.position.copy(c);sun.target.updateMatrixWorld();
 }
@@ -108,10 +111,10 @@ const keys={};
 addEventListener("keydown",e=>{if(window.__modal)return;keys[e.code]=true;
   if(e.code==="KeyE"&&!e.repeat)interact();
   if(e.code==="Escape"&&hud.marketOpen)closeMarket();
-  if(e.code==="Digit1")setTool(0);
-  if(e.code==="Digit2")setTool(1);
-  if(e.code==="Digit3")setTool(2);
-  if(e.code==="Digit4")setTool(3);
+  if(/^Digit[1-4]$/.test(e.code)){const v=visibleTools()[+e.code.slice(5)-1];if(v!=null)setTool(v)}
+  if(e.code==="KeyB")setTool(builder.active?3:2);
+  if((e.code==="ShiftLeft"||e.code==="ShiftRight")&&!e.repeat){player.shiftDown=performance.now();player.sprint=!player.sprint}
+  if(e.code==="Space"&&!e.repeat&&!hud.marketOpen&&player.jy===0&&!player.top)player.vy=7.2;
   if(e.code==="KeyC"&&!hud.marketOpen&&!builder.active){if(document.exitPointerLock)document.exitPointerLock();openCustomizer(()=>{eco.save();location.reload()})}
   if(e.code==="Tab"){e.preventDefault();landmarks()}
   if(builder.active){
@@ -121,7 +124,7 @@ addEventListener("keydown",e=>{if(window.__modal)return;keys[e.code]=true;
     if(e.code==="BracketLeft")builder.cycle(-1);
   }
   if(["Space","ArrowUp","ArrowDown"].includes(e.code))e.preventDefault();});
-addEventListener("keyup",e=>keys[e.code]=false);
+addEventListener("keyup",e=>{keys[e.code]=false;if((e.code==="ShiftLeft"||e.code==="ShiftRight")&&performance.now()-player.shiftDown>320)player.sprint=false});
 let noLock=false;
 const look=(mx,my,k)=>{player.yaw-=mx*k;player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch-my*k))};
 addEventListener("mousemove",e=>{if(hud.marketOpen||window.__modal)return;if(document.pointerLockElement===canvas)look(e.movementX,e.movementY,.0023);else if(noLock&&e.target===canvas)look(e.movementX,e.movementY,.0023)});
@@ -132,9 +135,19 @@ canvas.addEventListener("mousedown",e=>{
   if(e.button===2){if(builder.active)builder.remove();return}
   if(e.button!==0)return;
   if(document.pointerLockElement!==canvas&&!noLock){try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{noLock=true})}catch(err){noLock=true}}
-  if(jobs.tool===0)fishing.press();else if(jobs.tool===1)jobs.press(player.x,player.z);else if(jobs.tool===2)builder.place();
+  if(jobs.tool===0)fishing.press();else if(jobs.tool===1)jobs.press(player.x,player.z);else if(jobs.tool===2)builder.place();else if(jobs.tool===3)punch();
 });
 addEventListener("mouseup",()=>fishing.release());
+const OUCH=["Ow!","Hey! What was that for?","Ouch!","Watch it!","Rude!","Oof!"];
+function punch(){
+  if(hands.punching||hud.marketOpen)return;
+  hands.punch();
+  setTimeout(()=>{
+    const d=camera.getWorldDirection(new THREE.Vector3());
+    const hit=town.punchAt(player.x,player.z,d.x,d.z)||poi.punchAt(player.x,player.z,d.x,d.z);
+    if(hit){const p=hit.mesh.position;fx.pixels.emit(new THREE.Vector3(p.x,p.y+1.7,p.z),16,[0xffffff,0xffe08a,0xff9a4d],{speed:3.4,up:3,size:.12,life:.6});hud.toast(OUCH[(Math.random()*OUCH.length)|0],"#ff9a4d")}
+  },110);
+}
 function closeMarket(){hud.closeMarket();eco.save()}
 function nearStall(){return Math.hypot(player.x-stallPos.x,player.z-stallPos.z)<6.5}
 function lookDir(){const d=camera.getWorldDirection(new THREE.Vector3());return d}
@@ -143,7 +156,7 @@ function openMarket(loc="dock"){
   if(document.exitPointerLock)document.exitPointerLock();
   hud.openMarket(eco,(kind,v)=>{
     if(kind==="sold"){hud.toast(`Sold everything for $${v}`,"#ffd23a");fx.pixels.emit(new THREE.Vector3(stallPos.x,stallPos.y+2,stallPos.z).addScaledVector(new THREE.Vector3(Math.sin(dockRot),0,Math.cos(dockRot)),1.2),40,[0xffd23a,0xffb52e,0xfff0a0],{speed:4,up:6,size:.22,life:1.3,gravity:10})}
-    else{hud.toast(v==="rod"?"You bought a rod! Press 1, then cast at open water.":v==="axe"?"You bought an axe! Press 2 and chop a tree.":"Bought.","#6ee08a");if(v==="rod"||v==="axe")setTool(v==="rod"?0:1)}
+    else{hud.toast(v==="rod"?"You bought a rod! Cast at open water.":v==="axe"?"You bought an axe! Chop a tree.":"Bought.","#6ee08a");if(v==="rod"||v==="axe")setTool(v==="rod"?0:1)}
     refreshMoney();
   },loc);
 }
@@ -178,9 +191,9 @@ function interact(){
     const owner=eco.house.owners[sp.id];
     if(!owner){
       if(eco.myPlot!=null)hud.toast("You already own a plot.");
-      else if(eco.buyPlot(sp.id)){town.refresh();builder.load();hud.toast("You bought a plot! Press 3 to start building.","#6ee08a");setTool(2);refreshMoney()}
+      else if(eco.buyPlot(sp.id)){town.refresh();builder.load();hud.toast("You bought a plot! Press B to build.","#6ee08a");setTool(2);refreshMoney()}
       else hud.toast(`That plot costs $${eco.plotPrice(sp.id).toLocaleString()}. Land gets pricier as neighbours move in!`,"#ff7b6b");
-    }else if(owner==="me")hud.toast("This is your plot. Press 3 to build.");
+    }else if(owner==="me")hud.toast("This is your plot. Press B to build.");
     else hud.toast("A neighbour lives here.");
   }
 }
@@ -190,21 +203,29 @@ function frame(now){
   const dt=FIXED?1/30:Math.min(.05,(now-last)/1000);last=now;t+=dt;
   uniforms.uTime.value=t;water.material.uniforms.uTime.value=t;
   clouds.children.forEach(c=>{c.position.x+=c.userData.speed*dt;if(c.position.x>900)c.position.x=-900});
-  if(shot&&SHOTS[shot]){const s=SHOTS[shot]();camera.position.set(...s.p);camera.lookAt(...s.look)}
+  if(window.__cam){camera.position.set(...window.__cam.slice(0,3));camera.lookAt(...window.__cam.slice(3))}
+  else if(shot&&SHOTS[shot]){const s=SHOTS[shot]();camera.position.set(...s.p);camera.lookAt(...s.look)}
   else{
     player.yaw+=((keys.ArrowLeft?1:0)-(keys.ArrowRight?1:0))*1.8*dt;player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch+((keys.ArrowUp?1:0)-(keys.ArrowDown?1:0))*1.4*dt));
-    const f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),sp=(keys.ShiftLeft?9:5)*eco.speedMul*dt*(fishing.state==="reeling"?.3:1)*(hud.marketOpen?0:1);
+    const f=(keys.KeyW?1:0)-(keys.KeyS?1:0),r=(keys.KeyD?1:0)-(keys.KeyA?1:0),sp=((player.sprint||keys.ShiftLeft)?9.5:5)*eco.speedMul*dt*(fishing.state==="reeling"?.3:1)*(hud.marketOpen?0:1);
     const mx=(-Math.sin(player.yaw)*f+Math.cos(player.yaw)*r)*sp,mz=(-Math.cos(player.yaw)*f-Math.sin(player.yaw)*r)*sp;
     const ok=(x,z)=>(onDock(x,z)||heightAt(x,z)>-.9)&&!builder.blocked(x,z)&&!poi.blocked(x,z);
     if(ok(player.x+mx,player.z+mz)){player.x+=mx;player.z+=mz}else if(ok(player.x+mx,player.z)){player.x+=mx}else if(ok(player.x,player.z+mz)){player.z+=mz}
     fishing.walk=Math.min(1,Math.hypot(mx,mz)/(dt*9*eco.speedMul));
+    if(!f&&!r&&player.sprint&&!keys.ShiftLeft){player.idle=(player.idle||0)+dt;if(player.idle>.35)player.sprint=false}else player.idle=0;
+    player.moving=Math.hypot(mx,mz)>1e-4;
     let gh=Math.max(heightAt(player.x,player.z),.2);if(onDock(player.x,player.z))gh=Math.max(gh,.72);const pp=town.plotAt(player.x,player.z);if(pp)gh=Math.max(gh,pp.y);gh+=window.__fly||0;
     if(player.top){const L=poi.lighthouse,dx=player.x-L.x,dz=player.z-L.z,r=Math.hypot(dx,dz)||1,rr=Math.max(1.8,Math.min(3.1,r));player.x=L.x+dx/r*rr;player.z=L.z+dz/r*rr;gh=L.top+.2}
     player.y+=(gh+1.7-player.y)*Math.min(1,dt*(player.top?4:12));
-    camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
+    // jumping: simple gravity on top of the ground height
+    if(player.jy>0||player.vy>0){player.vy-=22*dt;player.jy+=player.vy*dt;if(player.jy<=0){player.jy=0;player.vy=0}}
+    const sprintNow=(player.sprint||keys.ShiftLeft)&&player.moving;
+    camera.fov+=((sprintNow?74:68)-camera.fov)*Math.min(1,dt*6);camera.updateProjectionMatrix();
+    camera.position.set(player.x,player.y+player.jy,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
   }
+  hud.slots(visibleTools(),jobs.tool);
   camera.updateMatrixWorld(true);
-  fishing.update(dt);jobs.update(dt,player.x,player.z);pickups.update(dt,player.x,player.z);town.update(dt);poi.update(dt);builder.update();hands.swing(jobs.swing);fx.pixels.update(dt);fx.rings.update(dt);
+  fishing.update(dt);jobs.update(dt,player.x,player.z);pickups.update(dt,player.x,player.z);town.update(dt);poi.update(dt);builder.update();hands.swing(jobs.swing);hands.sprint=(player.sprint||keys.ShiftLeft)&&player.moving;hands.airborne=player.jy;fx.pixels.update(dt);fx.rings.update(dt);
   for(const ev of eco.tick(dt)){
     if(ev.type==="prices"){town.refresh();if(hud.marketOpen&&hud._redraw)hud._redraw()}
     else{hud.toast(ev.msg,ev.type==="npc"?"#ffb36b":"#9ad4f0");town.refresh()}
@@ -217,7 +238,7 @@ function frame(now){
     else if(nearStall())pr="[E] Open the market";
     else if(nearVillage())pr="[E] Village market (pays extra for wood and forage)";
     else if(nearLightDoor()||player.top)pr=player.top?"[E] Climb down":"[E] Climb the lighthouse";
-    else if(sp){const o=eco.house.owners[sp.id];pr=!o?(eco.myPlot==null?`[E] Buy this plot for $${eco.plotPrice(sp.id).toLocaleString()}`:"For sale"):o==="me"?"Your plot. Press 3 to build":null}
+    else if(sp){const o=eco.house.owners[sp.id];pr=!o?(eco.myPlot==null?`[E] Buy this plot for $${eco.plotPrice(sp.id).toLocaleString()}`:"For sale"):o==="me"?"Your plot. Press B to build":null}
   }
   hud.prompt(pr);
   refreshMoney();

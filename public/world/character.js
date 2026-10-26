@@ -100,14 +100,19 @@ export function makeCharacter(look,npc){
   g.userData={legL,legR,armL,armR,head,body,phase:Math.random()*6};
   return g;
 }
-/** Walk/idle animation. speed 0..1. Call every frame. */
+/** Walk/idle animation. speed 0..1 (use >1 for running). Smooths itself so starting and stopping looks natural. */
 export function animateCharacter(g,dt,speed,t){
-  const u=g.userData;u.phase+=dt*(speed>.05?8:1.5);
-  const s=Math.sin(u.phase)*.75*Math.min(1,speed*1.4);
-  u.legL.rotation.x=s;u.legR.rotation.x=-s;u.armL.rotation.x=-s*.9;u.armR.rotation.x=s*.9;
-  u.body.position.y=Math.abs(Math.sin(u.phase))*.03*Math.min(1,speed*2);
-  u.head.rotation.z=Math.sin(u.phase*.5)*.04;
-  if(speed<.05){u.armL.rotation.z=.05+Math.sin(u.phase)*.02;u.armR.rotation.z=-.05-Math.sin(u.phase)*.02}else{u.armL.rotation.z=.05;u.armR.rotation.z=-.05}
+  const u=g.userData;u.sm=(u.sm??0)+(speed-(u.sm??0))*Math.min(1,dt*9);const k=u.sm;
+  u.phase+=dt*(1.6+k*7.5);
+  const s=Math.sin(u.phase),c=Math.cos(u.phase),amp=Math.min(1,k*1.3);
+  u.legL.rotation.x=s*.8*amp;u.legR.rotation.x=-s*.8*amp;
+  u.armL.rotation.x=-s*.9*amp+.05;u.armR.rotation.x=s*.9*amp+.05;
+  u.armL.rotation.z=.06+(1-amp)*Math.sin(u.phase*.6)*.03;u.armR.rotation.z=-.06-(1-amp)*Math.sin(u.phase*.6)*.03;
+  u.body.position.y=Math.abs(c)*.045*amp-(1-amp)*Math.sin(u.phase*.8)*.004;
+  u.body.rotation.x=amp*.08;u.body.rotation.y=s*.12*amp;           // lean into the walk, twist the hips
+  u.head.rotation.y=-s*.1*amp+Math.sin(u.phase*.35)*.12*(1-amp);    // look around when idle
+  u.head.rotation.z=Math.sin(u.phase*.5)*.03;u.head.rotation.x=-amp*.06;
+  if(u.hit>0){u.hit-=dt;const h=Math.max(0,u.hit)/.5;u.body.rotation.x=-.5*h;u.head.rotation.x=-.4*h;u.armL.rotation.x=-1.6*h;u.armR.rotation.x=-1.6*h;u.armL.rotation.z=.6*h;u.armR.rotation.z=-.6*h}
 }
 /** First-person hand and forearm, with the sleeve matching the character's top. Points along -z. */
 export function makeHand(skinC,sleeveC,side=1){

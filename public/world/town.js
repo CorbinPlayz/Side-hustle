@@ -104,10 +104,18 @@ export class Town{
       this.npcViews.set(n.id,{mesh,home:p,target:null,wait:1+this.rand()*3,phase:this.rand()*6,going:false,visit:20+this.rand()*60});
     }
   }
+  /** Fists: returns the neighbour you hit, if any, and knocks them back. */
+  punchAt(x,z,dx,dz){
+    const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;let best=null,bd=2.5;
+    for(const nv of this.npcViews.values()){const px=nv.mesh.position.x-x,pz=nv.mesh.position.z-z,d=Math.hypot(px,pz);if(d<bd&&(px*dx+pz*dz)/(d||1)>.45){bd=d;best=nv}}
+    if(best){best.stun=.9;best.kx=dx*6.5;best.kz=dz*6.5;best.mesh.userData.hit=.5;best.target=null;best.wait=1.6}
+    return best;
+  }
   update(dt){
     this.t+=dt;
     for(const nv of this.npcViews.values()){
       const m=nv.mesh,pos=m.position;nv.visit-=dt;
+      if(nv.stun>0){nv.stun-=dt;pos.x+=nv.kx*dt;pos.z+=nv.kz*dt;nv.kx*=Math.max(0,1-dt*5);nv.kz*=Math.max(0,1-dt*5);pos.y=Math.max(heightAt(pos.x,pos.z),.15);animateCharacter(m,dt,0,this.t);continue}
       if(!nv.target){
         nv.wait-=dt;
         if(nv.wait<=0){

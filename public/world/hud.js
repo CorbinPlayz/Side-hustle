@@ -75,9 +75,9 @@ export function createHud(){
   const market=document.createElement("div");market.id="market";document.body.appendChild(market);
   const fade=document.createElement("div");fade.id="fade";document.body.appendChild(fade);
   const $=id=>root.querySelector("#"+id);
-  const slots=[{k:1,name:"Rod",svg:ICON.rod},{k:2,name:"Axe",svg:ICON.axe},{k:3,name:"Build",svg:ICON.build},{k:4,name:"Hands"}];
   const bar=$("bar");
-  slots.forEach((s,i)=>{const d=document.createElement("div");d.className="slot"+(i===0?" sel":"");d.innerHTML=`<i>${s.k}</i>${s.svg||""}<em>${s.name}</em>`;bar.appendChild(d)});
+  const SLOT={0:["Rod",ICON.rod],1:["Axe",ICON.axe],2:["Build",ICON.build],3:["Hands",""]};
+  let slotKey="",selTool=3;
   let hintT=0,lastMoney=0;
   const api={
     hint(text,title){const h=$("hint");h.style.opacity=text?1:0;h.innerHTML=(title?`<h4>${title}</h4>`:"")+(text||"")},
@@ -91,7 +91,10 @@ export function createHud(){
     buildPanel(o){const p=$("bpanel");if(!o){p.style.display="none";return}p.style.display="block";
       p.innerHTML=o.list.map(r=>`<div class="row${r.sel?" sel":""}"><span>${r.name}</span><span>$${r.cost}</span></div>`).join("")+`<small>Click: place &nbsp; Right-click: remove<br>Scroll or [ ]: change piece<br>R: rotate &nbsp; G: snap is <b>${o.snap?"ON":"OFF"}</b></small>`},
     saved(){const e=$("saved");e.style.opacity=.9;clearTimeout(api._st);api._st=setTimeout(()=>e.style.opacity=0,1400)},
-    select(i){[...bar.children].forEach((c,k)=>c.classList.toggle("sel",k===i))},
+    /** Only show tools you actually have. list = tool ids in key order (1, 2, 3...). */
+    slots(list,sel){const key=list.join(",")+"|"+sel;if(key===slotKey)return;slotKey=key;
+      bar.innerHTML=list.map((t,i)=>`<div class="slot${t===sel?" sel":""}"><i>${i+1}</i>${SLOT[t][1]}<em>${SLOT[t][0]}</em></div>`).join("")},
+    select(i){selTool=i},
     flash(){fade.style.opacity=.35;setTimeout(()=>fade.style.opacity=0,60)},
     marketOpen:false,
     openMarket(eco,onChange,loc="dock"){
@@ -103,7 +106,7 @@ export function createHud(){
         const tools=TOOLS.map(t=>{const c=eco.toolCost(t.id);return `<div class="urow"><div><b>${t.name}</b><small>${t.desc}</small></div><button data-tool="${t.id}" ${c==null||eco.money<c?"disabled":""}>${c==null?"Owned":"$"+c}</button></div>`}).join("");
         const ups=UPGRADES.map(u=>{const c=eco.upgradeCost(u.id),ok=eco.canUpgrade(u.id);
           return `<div class="urow"><div><b>${u.name}</b> (${eco.up[u.id]}/${u.max})<small>${ok?u.desc:"Needs the "+(u.needs==="rod"?"fishing rod":"axe")}</small></div><button data-up="${u.id}" ${c==null||eco.money<c||!ok?"disabled":""}>${c==null?"Maxed":"$"+c}</button></div>`}).join("");
-        const goals=`<div class="urow"><div><b>House plot</b><small>${eco.myPlot!=null?"You own plot "+(eco.myPlot+1)+". Press 3 to build.":"Look for a FOR SALE sign. Prices rise as neighbours move in: now about $"+eco.plotPrice(0).toLocaleString()}</small></div><span>${eco.myPlot!=null?"Owned":""}</span></div><div class="urow"><div><b>Boat</b><small>Opens the next island. Coming soon.</small></div><span>$${GOALS.boat.toLocaleString()}</span></div>`;
+        const goals=`<div class="urow"><div><b>House plot</b><small>${eco.myPlot!=null?"You own plot "+(eco.myPlot+1)+". Press B to build.":"Look for a FOR SALE sign. Prices rise as neighbours move in: now about $"+eco.plotPrice(0).toLocaleString()}</small></div><span>${eco.myPlot!=null?"Owned":""}</span></div><div class="urow"><div><b>Boat</b><small>Opens the next island. Coming soon.</small></div><span>$${GOALS.boat.toLocaleString()}</span></div>`;
         market.innerHTML=`<div class="panel"><h2>${LOCATIONS[loc].name}</h2><div class="sub">${eco.event?"<b style=\"color:#ffd23a\">News:</b> "+(eco.event.mod>0?CATS[eco.event.cat].up:CATS[eco.event.cat].down)+"<br>":""}Prices ease back to normal and drop when you flood the market with one thing. ${loc==="village"?"The village pays extra for logs and forage, less for fish. ":"The dock pays a bit extra for fish. "}You have $${eco.money.toLocaleString()}.</div>
         <div class="cols"><div><table>${rows}</table><p style="margin:12px 0 0"><button id="sellAll" ${eco.bag.length?"":"disabled"}>Sell all (${eco.bag.length}) for $${total}</button></p></div>
         <div><h3 style="margin:0 0 6px;font:700 20px Alegreya,serif">Tools</h3>${tools}<h3 style="margin:12px 0 6px;font:700 20px Alegreya,serif">Upgrades</h3>${ups}<h3 style="margin:12px 0 6px;font:700 20px Alegreya,serif">Goals</h3>${goals}</div></div>

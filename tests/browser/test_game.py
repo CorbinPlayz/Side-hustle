@@ -32,7 +32,7 @@ async def main():
         await D('d.eco.money=5000;const p=d.town.plots[0];d.player.x=p.x-6;d.player.z=p.z+11;d.player.y=p.y+1.7;d.player.yaw=0;d.player.pitch=-.3;d.advance(.2)')
         await pg.keyboard.press('KeyE'); await D('d.advance(.2)')
         print('plot',await D('return d.eco.myPlot'),'money',await D('return d.eco.money'))
-        await pg.keyboard.press('Digit3'); await D('d.advance(.1)')
+        await pg.keyboard.press('KeyB'); await D('d.advance(.1)')
         print('build active',await D('return d.builder.active'))
         # place a floor grid, walls, roof
         await D('''const b=d.builder,p=d.town.plots[d.eco.myPlot];
@@ -49,6 +49,20 @@ async def main():
         await D('d.eco.earned=2000;d.eco.house.sinceNpc=9999;d.eco.timer=99;d.advance(.2)'); await pg.wait_for_timeout(1500)
         print('npcs',await D('return d.eco.house.npcs.length+" index "+d.eco.house.index.toFixed(2)'))
         await D('d.advance(25)')
+        # hotbar shows only what you own; jump and sprint toggle
+        print('slots',await pg.evaluate("[...document.querySelectorAll('#bar .slot')].map(e=>e.textContent).join(' | ')"))
+        await D('d.eco.tools.rod=true;d.advance(.1)'); await pg.wait_for_timeout(300)
+        print('slots with rod',await pg.evaluate("[...document.querySelectorAll('#bar .slot')].map(e=>e.textContent).join(' | ')"))
+        await pg.keyboard.press('Space'); await pg.wait_for_timeout(250)
+        print('jumped',await D('return d.player.jy>0||d.player.vy>0'))
+        await pg.keyboard.press('ShiftLeft'); await pg.keyboard.up('ShiftLeft')
+        print('sprint toggled',await D('return d.player.sprint'))
+        # punch a neighbour
+        await D('''const n=[...d.town.npcViews.values()][0];if(n){n.mesh.position.set(d.player.x,n.mesh.position.y,d.player.z-1.4);n.target=null;n.wait=5}d.player.yaw=0;d.player.pitch=0;d.advance(.1)''')
+        await pg.keyboard.press('Digit3'); await D('d.advance(.1)')
+        print('tool',await D('return d.jobs.tool'))
+        await pg.mouse.click(450,250); await pg.wait_for_timeout(700); await D('d.advance(.3)')
+        print('npc stunned',await D('const n=[...d.town.npcViews.values()][0];return n?n.stun:null'))
         await D('''const n=d.eco.house.npcs[0];if(n){const p=d.town.plots[n.plot];d.player.x=p.x+4;d.player.z=p.z+16;d.player.y=p.y+1.7;d.player.yaw=0;d.player.pitch=-.1;d.advance(.3)}''')
         await pg.wait_for_timeout(300); await pg.screenshot(path='/tmp/g4.png',timeout=180000)
         print('errs',errs)

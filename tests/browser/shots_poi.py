@@ -18,8 +18,13 @@ async def main():
         except Exception as e: print('NOLOAD',errs); return
         D=lambda js: pg.evaluate('(()=>{const d=window.__dev;'+js+'})()')
         print(await D('return JSON.stringify(d.poi.list.map(p=>[p.name,Math.round(p.x),Math.round(p.z),Math.round(p.y)]))'))
-        spots={'top':'const L=d.poi.cave;const f=d.poi.blockers.find(b=>b.ring).ring.face;d.player.x=L.x+Math.cos(f)*17;d.player.z=L.z+Math.sin(f)*17;d.player.yaw=Math.atan2(-(L.x-d.player.x),-(L.z-d.player.z));d.player.pitch=-.35;',
-          'side':'const L=d.poi.cave;const f=d.poi.blockers.find(b=>b.ring).ring.face;d.player.x=L.x+Math.cos(f)*5+Math.cos(f+1.57)*22;d.player.z=L.z+Math.sin(f)*5+Math.sin(f+1.57)*22;d.player.yaw=Math.atan2(-(L.x-d.player.x),-(L.z-d.player.z));d.player.pitch=-.3;'}
+        spots={'w1':'const L=d.poi.wreck;window.__cam=[L.x+Math.cos(.3)*14,4.5,L.z+Math.sin(.3)*14,L.x,1.5,L.z];',
+          'w2':'const L=d.poi.wreck;window.__cam=[L.x+Math.cos(2.0)*13,4,L.z+Math.sin(2.0)*13,L.x,1.5,L.z];',
+          'w3':'const L=d.poi.wreck;window.__cam=[L.x+Math.cos(4.2)*13,4,L.z+Math.sin(4.2)*13,L.x,1.5,L.z];',
+          'c1':'const L=d.poi.list.find(p=>p.name==="Waterfall cave");const f=d.poi.blockers.find(b=>b.ring).ring.face;window.__cam=[L.x+Math.cos(f+.5)*17,L.y+4,L.z+Math.sin(f+.5)*17,L.x,L.y+2,L.z];',
+          'c2':'const L=d.poi.list.find(p=>p.name==="Waterfall cave");const f=d.poi.blockers.find(b=>b.ring).ring.face;window.__cam=[L.x+Math.cos(f)*11,L.y+1.7,L.z+Math.sin(f)*11,L.x,L.y+1.5,L.z];',
+          'c3':'const L=d.poi.list.find(p=>p.name==="Waterfall cave");const f=d.poi.blockers.find(b=>b.ring).ring.face;window.__cam=[L.x+Math.cos(f)*3,L.y+1.7,L.z+Math.sin(f)*3,L.x-Math.cos(f)*4,L.y+2.2,L.z-Math.sin(f)*4];',
+          'c4':'const L=d.poi.list.find(p=>p.name==="Waterfall cave");const f=d.poi.blockers.find(b=>b.ring).ring.face;window.__cam=[L.x+Math.cos(f+3.14+.8)*24,L.y+5,L.z+Math.sin(f+3.14+.8)*24,L.x+Math.cos(f+3.14)*12,L.y+5,L.z+Math.sin(f+3.14)*12];'}
         for k,js in spots.items():
             await pg.evaluate('window.__fly=16');await D(js+'d.player.y+=16;d.advance(1.5)')
             await pg.wait_for_timeout(500)

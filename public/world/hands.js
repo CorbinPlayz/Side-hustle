@@ -30,29 +30,58 @@ export function createHands(camera,look={skin:1,topColor:1}){
   const axh=new THREE.Group();axe.add(axh);{const m=makeHand(SK,SL,1);m.scale.setScalar(.62);m.position.set(0,0,.05);axh.add(m)}
   const bare=new THREE.Group();g.add(bare);bare.visible=false;
   for(const s of [-1,1]){const hand=makeHand(SK,SL,s);hand.scale.setScalar(.62);hand.position.set(s*.2,-.3,-.55);hand.rotation.set(.45,-s*.12,0);bare.add(hand)}
-  let tool=0;
-  const state={bob:0,cast:0,reel:0,tension:0,t:0,swing:0};
+  let tool=3;
+  const ease=t=>t*t*(3-2*t),lerp=(a,b,t)=>a+(b-a)*t;
+  const S={bob:0,reel:0,t:0,equip:1,punch:-1,punchHand:0,swingT:-1,prevSwing:0,sx:0,sy:0,lastYaw:null,lastPitch:null,air:0};
+  const handL=bare.children[0],handR=bare.children[1];
   let tipWorld=new THREE.Vector3();
-  return {
-    group:g,rod,tip,
+  const api={
+    group:g,rod,tip,sprint:false,airborne:0,
     tipPos(){tip.getWorldPosition(tipWorld);return tipWorld},
     setVisible(v){g.visible=v},
-    setTool(i){tool=i;bare.visible=i>=2;rod.visible=(i===0);lh.visible=(i===0);axe.visible=(i===1)},
-    swing(v){state.swing=v},
+    /** Switching tools lowers the old one and raises the new one. */
+    setTool(i){tool=i;S.equip=0;bare.visible=i>=2;rod.visible=(i===0);lh.visible=(i===0);axe.visible=(i===1)},
+    equip(){},
+    swing(v){if(v>.95&&S.prevSwing<=.95&&S.swingT<0)S.swingT=0;S.prevSwing=v},
+    punch(){if(S.punch<0){S.punch=0;S.punchHand=1-S.punchHand}},
+    get punching(){return S.punch>=0},
     /** speed 0..1 walking, cast 0..1 swing progress, reeling 0/1, tension 0..1 */
     update(dt,speed,cast,reeling,tension,hide){
-      state.t+=dt;state.bob+=dt*(2+speed*7);
-      if(tool>=2){bare.position.set(Math.sin(state.bob)*.012*(.3+speed),Math.abs(Math.cos(state.bob))*.014*(.3+speed),0);return}
-      if(tool===1){const bx2=Math.sin(state.bob)*.012*(.3+speed),by2=Math.abs(Math.cos(state.bob))*.014*(.3+speed),sw=state.swing;axe.position.set(.28+bx2-sw*.1,-.3+by2-(hide?.8:0)+sw*.06,-.5+sw*.05);axe.rotation.set(.55-sw*1.5,-.1,-.25+sw*.35);return}
-      const bx=Math.sin(state.bob)*.012*(.3+speed),by=Math.abs(Math.cos(state.bob))*.014*(.3+speed);
-      // cast swing: rod goes back then forward
+      S.t+=dt;const sp=api.sprint&&speed>.2?1.35:1;S.bob+=dt*(2+speed*7*sp);S.equip=Math.min(1,S.equip+dt*3.4);S.air=lerp(S.air,api.airborne>0?1:0,Math.min(1,dt*10));
+      // weapon sway: hands lag a little behind where you look
+      if(S.lastYaw===null){S.lastYaw=camera.rotation.y;S.lastPitch=camera.rotation.x}
+      let dy=camera.rotation.y-S.lastYaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));const dp=camera.rotation.x-S.lastPitch;S.lastYaw=camera.rotation.y;S.lastPitch=camera.rotation.x;
+      S.sx=lerp(S.sx,Math.max(-.07,Math.min(.07,dy*1.1)),Math.min(1,dt*9));S.sy=lerp(S.sy,Math.max(-.05,Math.min(.05,-dp*1.1)),Math.min(1,dt*9));
+      const walk=speed*(.55+.45*sp),bx=Math.sin(S.bob)*.014*(.25+walk)+S.sx*-1,by=Math.abs(Math.cos(S.bob))*.017*(.2+walk)+Math.sin(S.t*1.5)*.003-S.air*.04+S.sy;
+      const drop=(1-ease(S.equip))*-.55-(hide?.8:0);
+      const tilt=Math.sin(S.bob)*.03*walk*sp;
+      if(tool>=2){
+        // fists: ready stance, alternate punches
+        if(S.punch>=0){S.punch+=dt/.34;if(S.punch>=1)S.punch=-1}
+        const pose=(hand,side,isP,p)=>{
+          let f=0,up=0,roll=0;
+          if(isP&&p>=0){f=p<.28?-ease(p/.28)*.12:(p<.5?lerp(-.12,.5,ease((p-.28)/.22)):lerp(.5,0,ease((p-.5)/.5)));up=p<.5?.02:0;roll=(p>.28&&p<.6?.4:0)*-side}
+          hand.position.set(side*.2+bx+(isP&&p>.28&&p<.6?-side*.12:0),-.3+by+drop+up+(isP?0:Math.sin(S.t*1.6+side)*.004),-.55-f);
+          hand.rotation.set(.45-(isP&&p>=0?.45*Math.sin(Math.min(1,p)*Math.PI):0)+tilt,-side*.12+(isP&&p>=0?-side*.25*Math.sin(Math.min(1,p)*Math.PI):0),roll);
+        };
+        pose(handL,-1,S.punchHand===0,S.punch);pose(handR,1,S.punchHand===1,S.punch);
+        bare.position.set(0,0,0);return;
+      }
+      if(tool===1){
+        if(S.swingT>=0){S.swingT+=dt/.46;if(S.swingT>=1)S.swingT=-1}
+        const p=S.swingT;let a=0,lift=0;
+        if(p>=0){a=p<.3?-ease(p/.3)*.5:(p<.52?lerp(-.5,1.45,ease((p-.3)/.22)):lerp(1.45,0,ease((p-.52)/.48)));lift=p<.3?ease(p/.3)*.1:0}
+        axe.position.set(.28+bx-(p>=0?a*.06:0),-.3+by+drop+lift-(p>=0&&a>0?a*.05:0),-.5+(p>=0?a*.08:0));
+        axe.rotation.set(.55-a*1.3,-.1-(p>=0?a*.12:0),-.25+(p>=0?a*.3:0)+tilt);return;
+      }
+      // fishing rod
       const sw=cast>0?Math.sin(Math.min(1,cast)*Math.PI):0;
-      const lift=cast>0?(cast<.35?-cast/.35:-(1-(cast-.35)/.65)):0; // back then forward
-      rod.position.set(.26+bx,-.24+by-(hide?.8:0),-.5);
-      rod.rotation.set(.45-sw*.7+(lift<0?-lift*.5:0)+(reeling?.12:0)-tension*.18,.05,0);
-      state.reel=reeling?state.reel+dt*11:state.reel;
-      reel.rotation.x=state.reel;
-      lh.position.set(-.1+Math.cos(state.reel)*.015*(reeling?1:0),-.27+Math.sin(state.reel)*.015*(reeling?1:0)-(hide?.8:0),-.5);
+      const back=cast>0&&cast<.4?ease(cast/.4):(cast>=.4?1-ease(Math.min(1,(cast-.4)/.6)):0);
+      rod.position.set(.26+bx,-.24+by+drop,-.5);
+      rod.rotation.set(.45-sw*.75+back*.35+(reeling?.12:0)-tension*.2+Math.sin(S.t*1.1)*.012,.05,tilt);
+      S.reel=reeling?S.reel+dt*11:S.reel;reel.rotation.x=S.reel;
+      lh.position.set(-.1+Math.cos(S.reel)*.015*(reeling?1:0)+bx,-.27+Math.sin(S.reel)*.015*(reeling?1:0)+by+drop,-.5);
     }
   };
+  return api;
 }
