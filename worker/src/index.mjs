@@ -150,7 +150,8 @@ export default {
       }
       if((path==="/admin.html"||path==="/admin")&&!me.is_admin)return new Response("Not found",{status:404,headers:SECURITY});
     }
-    const res=await env.ASSETS.fetch(request);
+    // serve the file exactly as named (html_handling is "none"), so / maps to index.html here
+    const res=await env.ASSETS.fetch(path==="/"?new Request(new URL("/index.html",url),request):request);
     const out=new Response(res.body,res);
     for(const k in SECURITY)out.headers.set(k,SECURITY[k]);
     if(!allowed)out.headers.set("Cache-Control","private, no-store");

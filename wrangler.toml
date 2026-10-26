@@ -9,6 +9,9 @@ preview_urls = false
 directory = "./public"
 binding = "ASSETS"
 run_worker_first = true
+# Serve files exactly as named. The default rewrites login.html to /login, which then bounced back to login.html forever.
+html_handling = "none"
+not_found_handling = "none"
 
 [[durable_objects.bindings]]
 name = "HUB"
