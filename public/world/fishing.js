@@ -98,7 +98,7 @@ export class Fishing{
       pos.needsUpdate=true;
       if(s==="landing")this.line.visible=false;
     }
-    hands.update(dt,this.walk||0,cast,reeling,tension,this.hideRod);
+    if(!window.__freezeHands)hands.update(dt,this.walk||0,cast,reeling,tension,this.hideRod);
   }
   land(){
     const f=this.fish,eco=this.eco;

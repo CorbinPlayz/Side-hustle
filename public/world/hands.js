@@ -32,9 +32,11 @@ export function createHands(camera,look={skin:1,topColor:1}){
   for(const s of [-1,1]){const hand=makeHand(SK,SL,s);hand.scale.setScalar(.62);hand.position.set(s*.2,-.3,-.55);hand.rotation.set(.45,-s*.12,0);bare.add(hand)}
   let tool=3;
   const ease=t=>t*t*(3-2*t),lerp=(a,b,t)=>a+(b-a)*t;
-  const S={bob:0,reel:0,t:0,equip:1,punch:-1,punchHand:0,swingT:-1,prevSwing:0,sx:0,sy:0,lastYaw:null,lastPitch:null,air:0};
+  const S={grab:-1,gcol:0xffffff,bob:0,reel:0,t:0,equip:1,punch:-1,punchHand:0,swingT:-1,prevSwing:0,sx:0,sy:0,lastYaw:null,lastPitch:null,air:0};
   const handL=bare.children[0],handR=bare.children[1];
   let tipWorld=new THREE.Vector3();
+  const held=new THREE.Mesh(new THREE.IcosahedronGeometry(.045,0),new THREE.MeshStandardMaterial({color:0xffffff,flatShading:true}));held.visible=false;handR.add(held);held.position.set(0,-.01,-.1);
+  const curl=(hand,v)=>{const u=hand.userData;if(!u.fingers)return;u.fingers.rotation.x=-v*1.15;u.thumb.rotation.y=u.side*v*.5};
   const api={
     group:g,rod,tip,sprint:false,airborne:0,
     tipPos(){tip.getWorldPosition(tipWorld);return tipWorld},
@@ -42,6 +44,9 @@ export function createHands(camera,look={skin:1,topColor:1}){
     /** Switching tools lowers the old one and raises the new one. */
     setTool(i){tool=i;S.equip=0;bare.visible=i>=2;rod.visible=(i===0);lh.visible=(i===0);axe.visible=(i===1)},
     equip(){},
+    /** Reach out, close the fingers around the item and bring it back to the bag. */
+    grab(color=0xffffff){if(S.grab<0){S.grab=0;S.gcol=color;held.material.color.setHex(color)}},
+    get grabbing(){return S.grab>=0},
     swing(v){if(v>.95&&S.prevSwing<=.95&&S.swingT<0)S.swingT=0;S.prevSwing=v},
     punch(){if(S.punch<0){S.punch=0;S.punchHand=1-S.punchHand}},
     get punching(){return S.punch>=0},
@@ -53,9 +58,12 @@ export function createHands(camera,look={skin:1,topColor:1}){
       let dy=camera.rotation.y-S.lastYaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));const dp=camera.rotation.x-S.lastPitch;S.lastYaw=camera.rotation.y;S.lastPitch=camera.rotation.x;
       S.sx=lerp(S.sx,Math.max(-.07,Math.min(.07,dy*1.1)),Math.min(1,dt*9));S.sy=lerp(S.sy,Math.max(-.05,Math.min(.05,-dp*1.1)),Math.min(1,dt*9));
       const walk=speed*(.55+.45*sp),bx=Math.sin(S.bob)*.014*(.25+walk)+S.sx*-1,by=Math.abs(Math.cos(S.bob))*.017*(.2+walk)+Math.sin(S.t*1.5)*.003-S.air*.04+S.sy;
+      let gk=0;if(S.grab>=0){S.grab+=dt/.62;if(S.grab>=1)S.grab=-1}
+      if(S.grab>=0){const p=S.grab;gk=p<.14?ease(p/.14):p>.86?1-ease((p-.86)/.14):1}
+      const stowed=gk>.35&&tool<2;rod.visible=tool===0&&!stowed;lh.visible=tool===0&&!stowed;axe.visible=tool===1&&!stowed;bare.visible=tool>=2||stowed;
       const drop=(1-ease(S.equip))*-.55-(hide?.8:0);
       const tilt=Math.sin(S.bob)*.03*walk*sp;
-      if(tool>=2){
+      if(tool>=2||stowed){
         // fists: ready stance, alternate punches
         if(S.punch>=0){S.punch+=dt/.34;if(S.punch>=1)S.punch=-1}
         const pose=(hand,side,isP,p)=>{
@@ -65,6 +73,14 @@ export function createHands(camera,look={skin:1,topColor:1}){
           hand.rotation.set(.45-(isP&&p>=0?.45*Math.sin(Math.min(1,p)*Math.PI):0)+tilt,-side*.12+(isP&&p>=0?-side*.25*Math.sin(Math.min(1,p)*Math.PI):0),roll);
         };
         pose(handL,-1,S.punchHand===0,S.punch);pose(handR,1,S.punchHand===1,S.punch);
+        const fist=tool===3?.8:tool===2?.15:.2;curl(handL,fist);curl(handR,fist);
+        if(S.grab>=0){
+          const p=S.grab,reach=p<.4?ease(p/.4):p<.5?1:1-ease((p-.5)/.5),close=p<.38?0:p<.5?ease((p-.38)/.12):p<.9?1:1-ease((p-.9)/.1);
+          handR.position.x=lerp(handR.position.x,.1,reach);handR.position.y=lerp(handR.position.y,-.36,reach);handR.position.z=lerp(handR.position.z,-.82,reach);
+          handR.rotation.x=lerp(handR.rotation.x,-.1,reach);handR.rotation.y=lerp(handR.rotation.y,.3,reach);handR.rotation.z=0;
+          handL.position.x-=.03*gk;
+          curl(handR,lerp(.05,.95,close));held.visible=p>.46&&p<.9;
+        }else held.visible=false;
         bare.position.set(0,0,0);return;
       }
       if(tool===1){

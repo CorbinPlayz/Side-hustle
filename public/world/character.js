@@ -117,10 +117,15 @@ export function animateCharacter(g,dt,speed,t){
 }
 /** First-person hand and forearm, with the sleeve matching the character's top. Points along -z. */
 export function makeHand(skinC,sleeveC,side=1){
+  // few, chunky pieces: sleeve, wrist, palm, one finger block that can curl, and a thumb
   const g=new THREE.Group(),skin=M(skinC),sl=M(sleeveC);
-  add(g,cyl(.05,.042,.3,7),sl,0,0,.2,Math.PI/2,0,0);add(g,cyl(.04,.036,.12,7),skin,0,0,.04,Math.PI/2,0,0);
-  add(g,ico(.058,0),skin,0,0,-.03,0,0,0,1.15,.8,1.3); // palm
-  for(let i=0;i<3;i++)add(g,ico(.026,0),skin,(i-1)*.036,-.004,-.095,0,0,0,1,.9,1.35);
-  add(g,ico(.026,0),skin,side*.06,.008,-.025,0,0,side*.5,1,.9,1.4); // thumb
+  add(g,cyl(.052,.046,.3,6),sl,0,0,.2,Math.PI/2,0,0);
+  add(g,cyl(.04,.038,.1,6),skin,0,0,.05,Math.PI/2,0,0);
+  add(g,new THREE.BoxGeometry(.1,.05,.09),skin,0,0,-.03);
+  const f=new THREE.Group();f.position.set(0,.006,-.078);g.add(f);
+  add(f,new THREE.BoxGeometry(.1,.042,.08),skin,0,0,-.038);
+  const t=new THREE.Group();t.position.set(side*.05,0,-.005);g.add(t);
+  add(t,new THREE.BoxGeometry(.036,.04,.075),skin,side*.012,0,-.03,0,side*.5,0);
+  g.userData={fingers:f,thumb:t,side};
   return g;
 }

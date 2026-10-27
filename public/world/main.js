@@ -195,17 +195,18 @@ function openNpc(n){
   else if(n.role==="vendor")hud.dialog(()=>({title:n.name,sub:sub+" Stock changes when I restock.",rows:[...(n.stock||[]).map(id=>{const p=PERKS.find(x=>x.id===id);return {t:p.name,small:p.desc,btn:"$"+p.cost,off:eco.money<p.cost,act:()=>{if(eco.buyPerk(n,id)){hud.toast(`Got ${p.name}`,"#6ee08a");refreshMoney()}}}}),...((n.stock||[]).length?[]:[{t:"Sold out",small:"Check back later"}])]}));
   else hud.dialog(()=>{const t=eco.tips(),f=r=>r.map(x=>`${x.name} ${x.m>=1?"+":""}${Math.round((x.m-1)*100)}%`).join(", ");return {title:n.name,sub:sub+` I'm buying up ${cat(n.wants)} and dumping ${cat(n.dumps)}, which moves their prices.`,rows:[{t:"Highest prices right now",small:f(t.hot)},{t:"Lowest prices right now",small:f(t.cold)}]}});
 }
+const G0=id=>(ITEMS[id]&&ITEMS[id].color)||0xffffff;
 function interact(){
   if(hud.marketOpen){closeMarket();return}
   if(fishing.busy)return;
   const pk=nearbyPickup();
   if(pk){
     const id=pk.id;
-    if(eco.addItem(id)){pickups.take(pk);const G=ITEMS[id];hud.toast(`Picked up ${G.name} (worth about $${eco.price(id)})`,G.kind==="rare"?"#4fe8ff":"#ffd23a")}
+    if(eco.addItem(id)){hands.grab(G0(id));pickups.take(pk);const G=ITEMS[id];hud.toast(`Picked up ${G.name} (worth about $${eco.price(id)})`,G.kind==="rare"?"#4fe8ff":"#ffd23a")}
     else hud.toast("Bag full! Sell at the market stall.","#ff7b6b");
     return;
   }
-  if(jobs.pickMushroom(player.x,player.z))return;
+  if(jobs.pickMushroom(player.x,player.z)){hands.grab(0xd8392f);return}
   const fu=nearFurn();if(fu){openHome(fu);return}
   const np=town.nearestNpc(player.x,player.z,3.2);if(np){openNpc(np);return}
   if(nearStall()){openMarket();return}
@@ -280,7 +281,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__ready=true;window.__H=heightAt;window.__R={p:ravPoint};window.__dev={openNpc,openHome,solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
+window.__ready=true;window.__H=heightAt;window.__R={p:ravPoint};window.__dev={hands,openNpc,openHome,solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
   advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);pickups.update(1/30,player.x,player.z);town.update(1/30);poi.update(1/30);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
 
 // autosave: every 8 seconds, when the tab is hidden, and when it closes
