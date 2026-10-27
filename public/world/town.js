@@ -45,8 +45,7 @@ export function cabin(color){
   for(const z of [-1.2,1.2]){box(.1,.8,.95,glass,-2.96,2.0,z,g);box(.1,.8,.95,glass,2.96,2.0,z,g)}
   // gable triangles front and back
   const sh=new THREE.Shape();sh.moveTo(-3.2,0);sh.lineTo(3.2,0);sh.lineTo(0,1.7);sh.closePath();
-  for(const z of [-3,3]){const tri=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.18,bevelEnabled:false}),wall);tri.position.set(0,3.1+.05,z-.09);tri.castShadow=true;g.add(tri)}
-  box(.7,.5,.1,glass,0,3.7,3.1,g);
+  for(const s of [-1,1]){const tri=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:.18,bevelEnabled:false}),wall);tri.rotation.y=Math.PI/2;tri.position.set(s*2.95-.09,3.1,0);tri.castShadow=true;g.add(tri);box(.1,.5,.7,glass,s*3.06,3.7,0,g)} // gable ends sit on the short sides, under the ridge
   // roof with overhang, ridge and a chimney
   const r1=box(7,.2,3.9,roof,0,4.0,-1.65,g);r1.rotation.x=-.5;const r2=box(7,.2,3.9,roof2,0,4.0,1.65,g);r2.rotation.x=.5;
   box(7.1,.22,.34,lam(0x5a2a1d),0,4.85,0,g);box(.8,2.2,.8,stone,1.9,4.4,-1.2,g);box(1,.14,1,dark,1.9,5.55,-1.2,g);

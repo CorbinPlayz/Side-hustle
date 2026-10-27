@@ -1,0 +1,43 @@
+<!doctype html><meta charset=utf-8><title>Model sheet</title>
+<style>html,body{margin:0;background:#cfd8e0}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js"}}</script>
+<script type="module">
+import * as THREE from "three";
+import {cabin} from "../town.js";
+import {PIECES} from "../build.js";
+import {makeCharacter,defaultLook,NPC_OUTFITS} from "../character.js";
+const q=new URLSearchParams(location.search),what=q.get("m")||"cabin",angles=+(q.get("a")||4);
+const W=1200,H=700;const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(W,H);document.body.appendChild(r.domElement);r.shadowMap.enabled=true;
+const sc=new THREE.Scene();sc.background=new THREE.Color(0xcfd8e0);
+sc.add(new THREE.HemisphereLight(0xffffff,0x889,1.1));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(5,10,6);sc.add(sun);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x8fbf6a}));floor.rotation.x=-Math.PI/2;sc.add(floor);
+let items=[];
+if(what==="cabin")items=[cabin(0xe5654a)];
+else if(what==="pieces")items=PIECES.map(p=>p.make());
+else if(what==="char"){const k=+(q.get("k")||0),o=Object.keys(NPC_OUTFITS)[k%Object.keys(NPC_OUTFITS).length];items=[makeCharacter(defaultLook(k*3+1),o)]}
+else if(what==="player")items=[makeCharacter(defaultLook(2),null)]
+else if(what==="chars")items=NPC_OUTFITS?Object.keys(NPC_OUTFITS).map((k,i)=>makeCharacter(defaultLook(i*3+1),k)):[makeCharacter(defaultLook(1),"baker")];
+const bb=new THREE.Box3();
+const cols=Math.min(items.length,4),rows=Math.ceil(items.length/cols);
+const pad=what==="pieces"?4:(what==="cabin"?10:3);
+items.forEach((m,i)=>{m.position.set((i%cols-(cols-1)/2)*pad,0,(Math.floor(i/cols)-(rows-1)/2)*pad);sc.add(m)});
+const cam=new THREE.PerspectiveCamera(40,W/H,.1,200);
+const span=(what==='char'||what==='player')?1.2:Math.max(cols,rows)*pad;cam.position.set(0,span*.55+2,span*1.1+4);cam.lookAt(0,1,0);
+const a=+(q.get("ang")||0);const rr=cam.position.length();cam.position.set(Math.sin(a)*rr*.9,cam.position.y,Math.cos(a)*rr*.9);cam.lookAt(0,1.2,0);
+function audit(root,label){
+  root.updateMatrixWorld(true);const meshes=[];root.traverse(o=>{if(o.isMesh)meshes.push(o)});
+  const boxes=meshes.map(m=>new THREE.Box3().setFromObject(m)),out=[];
+  boxes.forEach((b,i)=>{
+    const e=b.clone().expandByScalar(.06);let touch=false;
+    for(let j=0;j<boxes.length&&!touch;j++)if(j!==i&&e.intersectsBox(boxes[j]))touch=true;
+    const sz=b.getSize(new THREE.Vector3());
+    if(!touch&&meshes.length>1)out.push(`${label}: part ${i} floats (size ${sz.x.toFixed(2)}x${sz.y.toFixed(2)}x${sz.z.toFixed(2)} at ${b.min.x.toFixed(1)},${b.min.y.toFixed(1)},${b.min.z.toFixed(1)})`);
+  });
+  const all=new THREE.Box3();boxes.forEach(b=>all.union(b));
+  if(all.min.y<-.03)out.push(`${label}: sinks ${(-all.min.y).toFixed(2)} below its base`);
+  return out;
+}
+window.__report=[];
+if(q.get("check")){items.forEach((m,i)=>{const p=m.position.clone();m.position.set(0,0,0);window.__report.push(...audit(m,what==="pieces"?PIECES[i].t:what+i));m.position.copy(p)})}
+r.render(sc,cam);window.__done=true;window.__count=items.length;
+</script>
