@@ -22,8 +22,8 @@ const cols=Math.min(items.length,4),rows=Math.ceil(items.length/cols);
 const pad=what==="pieces"?4:(what==="cabin"?10:3);
 items.forEach((m,i)=>{m.position.set((i%cols-(cols-1)/2)*pad,0,(Math.floor(i/cols)-(rows-1)/2)*pad);sc.add(m)});
 const cam=new THREE.PerspectiveCamera(40,W/H,.1,200);
-const span=(what==='char'||what==='player')?1.2:Math.max(cols,rows)*pad;cam.position.set(0,span*.55+2,span*1.1+4);cam.lookAt(0,1,0);
-const a=+(q.get("ang")||0);const rr=cam.position.length();cam.position.set(Math.sin(a)*rr*.9,cam.position.y,Math.cos(a)*rr*.9);cam.lookAt(0,1.2,0);
+const span=(what==='char'||what==='player')?1.2:Math.max(cols,rows)*pad;cam.position.set(0,span*.55+2,span*1.1+4);cam.lookAt(0,1,0);if(q.get('face')){cam.position.set(0,1.9,2.2);}
+const a=+(q.get("ang")||0);const rr=cam.position.length();cam.position.set(Math.sin(a)*rr*.9,cam.position.y,Math.cos(a)*rr*.9);cam.lookAt(0,q.get('face')?1.85:1.2,0);
 function audit(root,label){
   root.updateMatrixWorld(true);const meshes=[];root.traverse(o=>{if(o.isMesh)meshes.push(o)});
   const boxes=meshes.map(m=>new THREE.Box3().setFromObject(m)),out=[];
