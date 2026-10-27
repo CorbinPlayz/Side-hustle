@@ -104,7 +104,7 @@ export class Town{
       else{
         const npc=h.npcs.find(n=>"npc:"+n.id===owner);
         this.setSign(v,[{t:npc?npc.name:"Neighbour",y:78,size:44}],"#6a3a2a");
-        v.house=cabin(npc?npc.color:0xe5654a);v.house.position.set(0,p.y,0);v.house.rotation.y=Math.PI;v.group.add(v.house);
+        v.house=cabin(npc?npc.color:0xe5654a);v.house.position.set(0,p.y,0);v.house.rotation.y=Math.atan2(this.stallPos.x-p.x,this.stallPos.z-p.z); // door faces the marketv.group.add(v.house);
       }
     }
     // neighbours

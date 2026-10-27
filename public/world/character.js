@@ -40,12 +40,12 @@ export function makeCharacter(look,npc){
     const shorts=!o&&L.bottom===1;
     add(leg,cyl(.075,.06,.86,7),shorts?skin:bot,0,-.43,0);
     if(shorts)add(leg,cyl(.09,.085,.36,7),bot,0,-.17,0);
-    add(leg,ico(.095,0),shoe,0,-.87,.05,0,0,0,1,.6,1.5);
+    add(leg,ico(.1,0),shoe,0,-.88,.07,0,0,0,1.1,.65,1.8);
     body.add(leg);return leg};
   const legL=mk(-1),legR=mk(1);
   // torso and neck
   const hood=!o&&L.top===2;
-  add(body,cyl(.2,.145,.62,8),top,0,1.22,0);
+  add(body,cyl(.2,.145,.62,8),top,0,1.22,0,0,0,0,1,1,1.12);
   if(!o&&L.top===1){add(body,cyl(.205,.15,.1,8),skin,0,1.5,0)} // tank top shows shoulders
   if(hood)add(body,ico(.17,0),top,0,1.52,-.12,0,0,0,1,.8,.8);
   add(body,cyl(.06,.07,.14,6),skin,0,1.58,0);

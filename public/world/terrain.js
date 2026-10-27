@@ -12,7 +12,8 @@ export function buildTerrain(){
   const p=g.attributes.position,step=S/N;
   for(let i=0;i<p.count;i++){ // jitter the grid so triangles are not a regular lattice, then drop onto the height field
     let x=p.getX(i),z=p.getZ(i);
-    if(Math.abs(x)<S/2-1&&Math.abs(z)<S/2-1){x+=(fbm(x*.9,z*.9,3,1)-.5)*step*.9;z+=(fbm(x*.9+7,z*.9+3,4,1)-.5)*step*.9}
+    if(Math.abs(x)<S/2-1&&Math.abs(z)<S/2-1){const k=ravCoords(x,z).d<RAV.w0+RAV.ww+4?.2:1; // keep the canyon walls tidy
+      x+=(fbm(x*.9,z*.9,3,1)-.5)*step*.9*k;z+=(fbm(x*.9+7,z*.9+3,4,1)-.5)*step*.9*k}
     p.setXYZ(i,x,heightAt(x,z),z);
   }
   const flat=g.toNonIndexed();flat.computeVertexNormals();
@@ -30,9 +31,9 @@ export function buildTerrain(){
     else if(cy<.55)tmp.copy(WET).lerp(SAND2,Math.min(1,(cy+.25)/.8)); // damp sand at the waterline
     else if(cy<1.9)tmp.copy(SAND).lerp(DRY,n2).lerp(SAND2,n3*.5);
     else if(ny<.8){ // steep ground: layered rock
-      const strata=Math.sin(cy*1.7+n*6)*.5+.5;tmp.copy(ROCK).lerp(ROCK2,strata*.7).multiplyScalar(.9);
+      const strata=Math.sin(cy*.9+n*3)*.5+.5;tmp.copy(ROCK).lerp(ROCK2,strata*.6).multiplyScalar(inR?.82+n3*.1:.9);
       tmp.lerp(GRASSES[1],Math.max(0,ny-.62)*2.5);
-      if(inR){const dd=cy-RAV.Yf;tmp.multiplyScalar(.75+n3*.25);if(dd<4)tmp.lerp(C(0x3a2a24),1-dd/4);else if(dd>10)tmp.lerp(GRASSES[3],.18)}
+      if(inR){const dd=cy-RAV.Yf;tmp.lerp(C(0x7a6a58),.35);if(dd<4)tmp.lerp(C(0x3a2a24),1-dd/4);else if(dd>10)tmp.lerp(GRASSES[3],.18)}
     }else{
       // meadow: patches of different greens, dark forest floor where the woods are thick, pale dry grass on the high bits
       const gi=Math.min(4,Math.floor(n2*5));tmp.copy(GRASSES[gi]).lerp(GRASSES[(gi+2)%5],n3*.6);
