@@ -11,9 +11,11 @@ import {Fishing} from "./fishing.js";
 import {createPost} from "./post.js";
 import {Jobs} from "./jobs.js";
 import {makeCollider} from "./collide.js";
+import {inLava,RAV,ravPoint} from "./ravine.js";
+import {RECIPES,PERKS,ROLE_INFO,byId as ITEM_BY,CATS,catOf} from "./economy.js";
 import {mulberry} from "./noise.js";
 import {Pickups} from "./pickups.js";
-import {Town} from "./town.js";
+import {Town,PLOT} from "./town.js";
 import {Builder} from "./build.js";
 import {POIs} from "./poi.js";
 import {openCustomizer,loadLook} from "./customize.js";
@@ -100,6 +102,7 @@ const SHOTS={
   3:()=>({p:[-60,40,150],look:[20,6,-40]}),
   4:()=>({p:[dx+Math.cos(dockA)*5,2.4,dz+Math.sin(dockA)*5+0],look:[dx-Math.cos(dockA)*30,5,dz-Math.sin(dockA)*30]})
 };
+const spawnAt=()=>{if(eco.myPlot!=null){const p=town.plots.find(q=>q.id===eco.myPlot),bed=eco.pieces.find(q=>q.t==="bed");if(p&&bed)return {x:p.x+bed.x+.9,z:p.z+bed.z,why:"your bed"};if(p)return {x:p.x,z:p.z+(PLOT/2)+2.5,why:"your house"}}return {x:dockPos.x+Math.cos(dockA)*(DOCK_LEN*.9),z:dockPos.z+Math.sin(dockA)*(DOCK_LEN*.9),why:"the dock"}};
 const player={jy:0,vy:0,sprint:false,shiftDown:0,x:dockPos.x+Math.cos(dockA)*(DOCK_LEN*.9),z:dockPos.z+Math.sin(dockA)*(DOCK_LEN*.9),yaw:Math.atan2(-Math.cos(dockA),-Math.sin(dockA)),pitch:-.28,y:0};
 function placeSun(c){
   sun.position.copy(c).addScaledVector(SUN_DIR,260);sun.target.position.copy(c);sun.target.updateMatrixWorld();
@@ -170,6 +173,28 @@ function landmarks(){
   rows.push(`Dock market: ${Math.round(Math.hypot(stallPos.x-player.x,stallPos.z-player.z))} m`);
   hud.hint(rows.join("<br>"),"Landmarks (Tab)");
 }
+const FURN=["chest","bed","bench","tank","garden"];
+function nearFurn(){if(eco.myPlot==null)return null;const pl=town.plots[eco.myPlot];let b=null,bd=3;for(const p of eco.pieces){if(!FURN.includes(p.t))continue;const d=Math.hypot(pl.x+p.x-player.x,pl.z+p.z-player.z);if(d<bd){bd=d;b=p}}return b}
+const nm=id=>(ITEM_BY[id]||{name:id}).name;
+function openHome(p){
+  const stashTxt=()=>{const c={};eco.stash.forEach(f=>c[f.id]=(c[f.id]||0)+1);return Object.entries(c).map(([k,v])=>`${nm(k)} x${v}`).join(", ")||"empty"};
+  if(p.t==="chest")hud.dialog(()=>({title:"Chest",sub:`Anything in here survives a fall into lava. Stash ${eco.stash.length}/40: ${stashTxt()}`,rows:[
+    {t:"Store your bag",small:`Move ${eco.bag.length} item(s) in`,btn:"Store",off:!eco.bag.length||eco.stash.length>=40,act:()=>{const n=eco.store();hud.toast(`Stored ${n} item(s)`,"#9ad4f0");refreshMoney()}},
+    {t:"Take items back",small:`Bag has room for ${eco.capacity-eco.bag.length}`,btn:"Take",off:!eco.stash.length||eco.bag.length>=eco.capacity,act:()=>{const n=eco.fetch();hud.toast(`Took ${n} item(s)`,"#9ad4f0");refreshMoney()}}]}));
+  else if(p.t==="bed")hud.dialog(()=>({title:"Bed",sub:"Sleeping saves your game. If you ever fall in lava you wake up in this bed.",rows:[
+    {t:"Sleep",small:"Saves and sets this as home",btn:"Sleep",act:()=>{eco.save();hud.flash();hud.saved();hud.toast("Slept well. Progress saved, home set.","#6ee08a")}}]}));
+  else if(p.t==="bench")hud.dialog(()=>({title:"Workbench",sub:"Turn raw finds into goods worth about double. Needs the items in your bag.",rows:RECIPES.map(r=>({t:`${nm(r.id)} (sells ~$${eco.price(r.id)})`,small:"Needs "+Object.entries(r.needs).map(([k,n])=>`${n} ${nm(k)} (${eco.count(k)})`).join(", "),btn:"Make",off:!eco.canCraft(r),act:()=>{if(eco.craft(r.id)){hud.toast(`Made ${nm(r.id)}`,"#ffd23a");refreshMoney()}else hud.toast("Bag too full or missing items","#ff7b6b")}}))}));
+  else hud.dialog(()=>({title:p.t==="tank"?"Fish tank":"Herb garden",sub:`Your tanks and gardens earn about $${eco.homeRate} a minute while you play (up to 4 of each). Come back and collect.`,rows:[
+    {t:`Collect $${Math.floor(eco.till)}`,small:`Fills up to $${Math.floor(eco.homeRate*25)}`,btn:"Collect",off:eco.till<1,act:()=>{const t=eco.collectTill();hud.toast(`Collected $${t}`,"#ffd23a");refreshMoney()}}]}));
+}
+function openNpc(n){
+  const info=ROLE_INFO[n.role]||ROLE_INFO.buyer,cat=c=>CATS[c]?CATS[c].label:c;
+  const sub=`${info.label}. "${info.line}"`;
+  if(n.role==="buyer")hud.dialog(()=>{const mine=eco.bag.filter(f=>catOf(f.id)===n.wants).length;return {title:n.name,sub:sub+` Today I want ${cat(n.wants)} and pay 30% over the dock price.`,rows:[{t:`Sell my ${cat(n.wants)}`,small:`${mine} in your bag`,btn:"Sell",off:!mine,act:()=>{const r=eco.buyerSell(n);hud.toast(`${n.name} paid $${r.total} for ${r.sold} item(s)`,"#ffd23a");refreshMoney()}}]}});
+  else if(n.role==="jobs")hud.dialog(()=>{const j=eco.jobFor(n);return {title:n.name,sub,rows:[{t:`Bring me ${j.qty} x ${nm(j.id)}`,small:`You have ${eco.count(j.id)}. I'll pay $${j.pay}, well over the market price.`,btn:"Hand over",off:eco.count(j.id)<j.qty,act:()=>{const p=eco.deliverJob(n);if(p){hud.toast(`${n.name} paid you $${p}`,"#6ee08a");refreshMoney()}}}]}});
+  else if(n.role==="vendor")hud.dialog(()=>({title:n.name,sub:sub+" Stock changes when I restock.",rows:[...(n.stock||[]).map(id=>{const p=PERKS.find(x=>x.id===id);return {t:p.name,small:p.desc,btn:"$"+p.cost,off:eco.money<p.cost,act:()=>{if(eco.buyPerk(n,id)){hud.toast(`Got ${p.name}`,"#6ee08a");refreshMoney()}}}}),...((n.stock||[]).length?[]:[{t:"Sold out",small:"Check back later"}])]}));
+  else hud.dialog(()=>{const t=eco.tips(),f=r=>r.map(x=>`${x.name} ${x.m>=1?"+":""}${Math.round((x.m-1)*100)}%`).join(", ");return {title:n.name,sub:sub+` I'm buying up ${cat(n.wants)} and dumping ${cat(n.dumps)}, which moves their prices.`,rows:[{t:"Highest prices right now",small:f(t.hot)},{t:"Lowest prices right now",small:f(t.cold)}]}});
+}
 function interact(){
   if(hud.marketOpen){closeMarket();return}
   if(fishing.busy)return;
@@ -181,6 +206,8 @@ function interact(){
     return;
   }
   if(jobs.pickMushroom(player.x,player.z))return;
+  const fu=nearFurn();if(fu){openHome(fu);return}
+  const np=town.nearestNpc(player.x,player.z,3.2);if(np){openNpc(np);return}
   if(nearStall()){openMarket();return}
   if(nearVillage()){openMarket("village");return}
   if(nearLightDoor()||player.top){
@@ -218,6 +245,7 @@ function frame(now){
     player.moving=Math.hypot(mx,mz)>1e-4;
     let gh=Math.max(heightAt(player.x,player.z),.2);if(onDock(player.x,player.z))gh=Math.max(gh,.72);const pp=town.plotAt(player.x,player.z);if(pp)gh=Math.max(gh,pp.y);gh+=window.__fly||0;
     if(player.top){const L=poi.lighthouse,dx=player.x-L.x,dz=player.z-L.z,r=Math.hypot(dx,dz)||1,rr=Math.max(1.8,Math.min(3.1,r));player.x=L.x+dx/r*rr;player.z=L.z+dz/r*rr;gh=L.top+.2}
+    if(!player.dead&&inLava(player.x,player.z)&&gh<RAV.Yf+1.3){player.dead=1;const r=eco.die(),sp=spawnAt();hud.toast(`You fell in the lava! Lost $${r.lost} and ${r.bagN} item${r.bagN===1?"":"s"}. Back at ${sp.why}.`,"#ff5a3a");fx.pixels.emit(new THREE.Vector3(player.x,gh+1,player.z),50,[0xff7a1a,0xffc23a,0x222222],{speed:5,up:7,size:.25,life:1.2});player.x=sp.x;player.z=sp.z;player.vy=0;player.jy=0;gh=Math.max(heightAt(sp.x,sp.z),.2);player.y=gh+1.7;setTimeout(()=>{player.dead=0},600)}
     player.y+=(gh+1.7-player.y)*Math.min(1,dt*(player.top?4:12));
     // jumping: simple gravity on top of the ground height
     if(player.jy>0||player.vy>0){player.vy-=22*dt;player.jy+=player.vy*dt;if(player.jy<=0){player.jy=0;player.vy=0}}
@@ -237,6 +265,8 @@ function frame(now){
     const pk=nearbyPickup(),mu=jobs.nearestMushroom(player.x,player.z),sp=town.nearestSign(player.x,player.z);
     if(pk)pr=`[E] Pick up ${ITEMS[pk.id].name}`;
     else if(mu)pr=mu.n.kind==="glowcap"?"[E] Pick the glowing mushroom":"[E] Pick mushroom";
+    else if(nearFurn())pr="[E] Use "+({chest:"chest",bed:"bed",bench:"workbench",tank:"fish tank",garden:"garden"})[nearFurn().t];
+    else if(town.nearestNpc(player.x,player.z,3.2)){const q=town.nearestNpc(player.x,player.z,3.2);pr=`[E] Talk to ${q.name} (${(ROLE_INFO[q.role]||{}).label})`}
     else if(nearStall())pr="[E] Open the market";
     else if(nearVillage())pr="[E] Village market (pays extra for wood and forage)";
     else if(nearLightDoor()||player.top)pr=player.top?"[E] Climb down":"[E] Climb the lighthouse";
@@ -250,7 +280,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-window.__ready=true;window.__H=heightAt;window.__dev={solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
+window.__ready=true;window.__H=heightAt;window.__R={p:ravPoint};window.__dev={openNpc,openHome,solid,poi,town,builder,pickups,jobs,player,fishing,eco,hud,camera,stallPos,dockPos,dockA,scene,
   advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);pickups.update(1/30,player.x,player.z);town.update(1/30);poi.update(1/30);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
 
 // autosave: every 8 seconds, when the tab is hidden, and when it closes

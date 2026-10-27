@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {heightAt,slopeAt} from "./terrain.js";
 import {fbm,hash2} from "./noise.js";
+import {inRavine} from "./ravine.js";
 
 /** Merge coloured parts into one flat-shaded geometry (vertex colours baked). */
 export function mergeParts(parts){
@@ -60,7 +61,7 @@ export function buildForest(rand,uniforms){
   const trees=[],oaks=[],rocks=[],grass=[],flowers=[];
   for(let i=0;i<9000;i++){
     const x=(rand()-.5)*560,z=(rand()-.5)*560,h=heightAt(x,z);
-    if(h<1.5)continue;
+    if(h<1.5||inRavine(x,z,3))continue;
     const s=slopeAt(x,z);if(s>.75)continue;
     const dens=fbm(x*.02,z*.02,41,3);
     if(dens>.5&&rand()<.8&&trees.length+oaks.length<1900){
@@ -69,11 +70,11 @@ export function buildForest(rand,uniforms){
   }
   for(let i=0;i<7000;i++){ // loose rocks on the beach
     const a=rand()*6.283,r=60+rand()*220,x=Math.cos(a)*r,z=Math.sin(a)*r,h=heightAt(x,z);
-    if(h>-.3&&h<1.4&&rocks.length<260)rocks.push([x,h-.1,z,.4+rand()*1.1,rand()*6.28]);
+    if(h>-.3&&h<1.4&&rocks.length<260&&!inRavine(x,z,3))rocks.push([x,h-.1,z,.4+rand()*1.1,rand()*6.28]);
   }
-  for(let i=0;i<90000&&grass.length<42000;i++){
+  for(let i=0;i<90000&&grass.length<36000;i++){
     const x=(rand()-.5)*420,z=(rand()-.5)*420,h=heightAt(x,z);
-    if(h<2.2||slopeAt(x,z)>.55)continue;
+    if(h<2.2||slopeAt(x,z)>.55||inRavine(x,z,2))continue;
     const patch=fbm(x*.05,z*.05,77,2);if(patch<.34)continue;
     const clump=fbm(x*.35,z*.35,12,2); // grass grows in clumps with bare gaps between
     if(clump<.36&&rand()<.8)continue;
@@ -100,10 +101,10 @@ export function buildForest(rand,uniforms){
       const pt=(x,y,z)=>[ox+x*ca-z*sa+ (sa*lean*(y>.5?1:0)),y*hh,oz+x*sa+z*ca+(-ca*lean*(y>.5?1:0))];
       const tri=[pt(-w,0,0),pt(w,0,0),pt(0,1,0)],cl=[[.55,.62,.5],[.55,.62,.5],[1.15,1.15,1.05]];
       for(let k=0;k<3;k++){P.push(...tri[k]);Cc.push(...cl[k])}
-      for(let k=2;k>=0;k--){P.push(...tri[k]);Cc.push(...cl[k])}}
+    }
     const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(P,3));g.setAttribute("color",new THREE.Float32BufferAttribute(Cc,3));g.computeVertexNormals();return g})();
   const blade=tuft;
-  const gMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1});windify(gMat,uniforms,2.2);
+  const gMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1,side:THREE.DoubleSide});windify(gMat,uniforms,2.2);
   const gm=inst(blade,gMat,grass,(o,i)=>new THREE.Color().setHSL(.23+hash2(i,4,4)*.1,.6,.36+hash2(i,6,1)*.16),false);gm.receiveShadow=false;
   group.add(gm);group.userData.grassIm.im=gm;
   // pixel flowers: small cubes
@@ -167,7 +168,7 @@ export function buildMushrooms(rand){
   const spots={mushroom:[],glowcap:[]};
   for(let i=0;i<30000&&spots.mushroom.length+spots.glowcap.length<190;i++){
     const x=(rand()-.5)*480,z=(rand()-.5)*480,h=heightAt(x,z);
-    if(h<2.4||slopeAt(x,z)>.6||fbm(x*.02,z*.02,41,3)<.42)continue;
+    if(h<2.4||slopeAt(x,z)>.6||inRavine(x,z,3)||fbm(x*.02,z*.02,41,3)<.42)continue;
     (rand()<.12?spots.glowcap:spots.mushroom).push({x,y:h-.02,z,s:1+rand()*.9,ry:rand()*6.28,alive:true});
   }
   for(const d of defs){

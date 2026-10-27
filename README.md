@@ -64,3 +64,9 @@ Open `world.html` (the front page redirects there). You start with nothing.
 - **Characters:** press C to make your character (hair, hat, eyes, teeth, outfit). Neighbours and villagers use the same character model with NPC-only outfits.
 - **Prices:** move slowly and predictably, with a town news line explaining events like a fish festival. Selling a lot of one thing drops its price.
 - **Autosave:** progress saves every 8 seconds, when you switch tabs, and when you close the page (in this browser for now; account saves come with the Cloudflare version).
+
+
+## Ravine, houses and neighbours (latest)
+- **Lava ravine**: a canyon cut through the central hills (`public/world/ravine.js`, used by the height function). A waterfall pours off the head into a lava floor. A cliff path runs down the wall to a ledge with the cave. Fall in lava and you lose 20% of your money and your whole bag, then wake at your bed (or the dock). Loot on the path and in the cave is random.
+- **Houses do things** (place these with B): Chest (safe storage, survives lava), Bed (sleep = save, respawn point), Workbench (craft raw finds into goods worth about double), Fish tank and Herb garden (earn money per minute while you play; press E on them to collect).
+- **Neighbours have jobs**: Buyer (pays 30% extra for one category), Job giver (asks for items for a big payout), Vendor (temporary boosts), Trader (their buying and dumping moves market prices, and they show what is hot). Press E next to them.

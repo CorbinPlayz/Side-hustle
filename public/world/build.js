@@ -21,6 +21,11 @@ export const PIECES=[
   {t:"bed",name:"Bed",cost:110,snap:"half",make(){const g=new THREE.Group();B(1.1,.3,2.1,M.dark,0,.25,0,g);B(1,.2,1.9,M.cloth2,0,.5,0,g);B(.8,.14,.4,M.pillow,0,.66,-.7,g);B(1.1,.7,.1,M.dark,0,.65,-1.05,g);return g}},
   {t:"lamp",name:"Lamp",cost:40,snap:"half",make(){const g=new THREE.Group();B(.08,1.5,.08,M.dark,0,.75,0,g);B(.45,.35,.45,M.lamp,0,1.55,0,g);B(.4,.05,.4,M.dark,0,.03,0,g);return g}},
   {t:"plant",name:"Plant",cost:22,snap:"half",make(){const g=new THREE.Group();B(.4,.4,.4,M.pot,0,.2,0,g);const l=new THREE.Mesh(new THREE.IcosahedronGeometry(.38,0),M.green);l.position.set(0,.7,0);l.castShadow=true;g.add(l);return g}},
+  {t:"chest",name:"Chest (safe storage)",cost:90,snap:"half",make(){const g=new THREE.Group();B(1.1,.6,.7,M.wood,0,.3,0,g);const lid=B(1.14,.22,.74,M.dark,0,.7,0,g);B(.14,.2,.06,lam(0xe8c24a),0,.55,.37,g);for(const x of [-.4,.4])B(.08,.64,.74,M.dark,x,.32,0,g);return g}},
+  {t:"bench",name:"Workbench (crafting)",cost:130,snap:"half",make(){const g=new THREE.Group();B(1.5,.12,.8,M.wood,0,.85,0,g);for(const x of [-.65,.65])for(const z of [-.32,.32])B(.1,.82,.1,M.dark,x,.42,z,g);B(1.4,.06,.7,M.dark,0,.4,0,g);B(.1,.5,.1,lam(0x8a8a90),-.4,1.15,0,g);B(.35,.12,.12,lam(0x8a8a90),-.3,1.4,0,g);B(.3,.08,.2,lam(0xc9703c),.35,.93,0,g);return g}},
+  {t:"tank",name:"Fish tank (earns money)",cost:260,snap:"half",make(){const g=new THREE.Group();B(1.3,.5,.7,M.dark,0,.25,0,g);B(1.2,.7,.6,lam(0x6fc4e8,{transparent:true,opacity:.5,roughness:.1}),0,.85,0,g);B(1.3,.06,.76,M.dark,0,1.22,0,g);B(.25,.12,.1,lam(0xffa52e),-.2,.9,0,g);B(.2,.1,.1,lam(0xff6a4a),.25,.7,.05,g);B(1.1,.05,.5,lam(0xe9dca4),0,.55,0,g);return g}},
+  {t:"garden",name:"Herb garden (earns money)",cost:180,snap:"half",make(){const g=new THREE.Group();B(1.5,.3,.9,M.dark,0,.15,0,g);B(1.36,.12,.76,lam(0x5a3a22),0,.32,0,g);for(let i=0;i<6;i++){const l=new THREE.Mesh(new THREE.IcosahedronGeometry(.17,0),i%2?M.green:lam(0x6fbf4a));l.position.set(-.55+i*.22,.52,(i%2?.18:-.18));l.castShadow=true;g.add(l)}B(.12,.14,.12,lam(0xe86bd0),.3,.62,.2,g);return g}},
+  {t:"gable",name:"Pitched roof",cost:30,snap:"cell",make(){const g=new THREE.Group();const sh=new THREE.Shape();sh.moveTo(-1.25,0);sh.lineTo(1.25,0);sh.lineTo(0,1.1);sh.closePath();const m=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:2.3,bevelEnabled:false}),M.roof);m.position.set(0,WALL_H,-1.15);m.castShadow=true;m.receiveShadow=true;g.add(m);return g}},
   {t:"rug",name:"Rug",cost:35,snap:"half",make(){const g=new THREE.Group();B(1.8,.03,1.2,M.rug,0,.16,0,g);B(1.4,.035,.8,M.rug2,0,.165,0,g);return g}}
 ];
 export const byT=Object.fromEntries(PIECES.map(p=>[p.t,p]));
@@ -99,7 +104,7 @@ export class Builder{
   blocked(x,z){
     const pl=this.plot;if(!pl||!this.meshes.length)return false;
     const lx=x-pl.x,lz=z-pl.z;if(Math.abs(lx)>R+2||Math.abs(lz)>R+2)return false;
-    for(const {p} of this.eco.pieces){
+    for(const {p} of this.meshes){
       if(p.t!=="wall"&&p.t!=="window"&&p.t!=="door")continue;
       const dx=lx-p.x,dz=lz-p.z,c=Math.cos(p.r),s=Math.sin(p.r),al=dx*c-dz*s,ac=dx*s+dz*c;
       if(p.t==="door"){if(Math.abs(ac)<.35&&Math.abs(al)<1.05&&Math.abs(al)>.5)return true;continue}

@@ -41,7 +41,7 @@ export class Fishing{
   reset(){this.state="idle";this.bobber.visible=false;this.line.visible=false;this.hud.bite(false);this.t=0}
   hook(){
     this.hud.bite(false);this.hud.hint("");
-    this.fish=rollFish(this.eco.up.bait);
+    {const lk=this.eco.perk.lucky>0;this.fish=rollFish(this.eco.up.bait+(lk?1.6:0));if(lk)this.eco.perk.lucky--}
     this.fishW=Math.round((.5+Math.random()*1.4)*10)/10;
     this.fx.rings.start(this.bobber.position.x,this.bobber.position.y,this.bobber.position.z,3.2,.9);
     this.fx.pixels.emit(this.bobber.position,26,SPLASH,{speed:3.5,up:6,size:.16});

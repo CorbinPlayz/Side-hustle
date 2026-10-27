@@ -118,6 +118,14 @@ export function createHud(){
       };
       draw();api._redraw=draw;
     },
+    /** Simple talk/use panel. build() returns {title,sub,rows:[{t,small,btn,off,act}]} and is re-run after every click. */
+    dialog(build){
+      api.marketOpen=true;market.style.display="flex";
+      const draw=()=>{const s=build();
+        market.innerHTML=`<div class="panel" style="width:min(520px,94vw)"><h2>${s.title}</h2><div class="sub">${s.sub||""}</div>${s.rows.map((r,i)=>`<div class="urow"><div><b>${r.t}</b><small>${r.small||""}</small></div>${r.btn?`<button data-r="${i}" ${r.off?"disabled":""}>${r.btn}</button>`:""}</div>`).join("")}<p style="margin:14px 0 0;text-align:right"><button id="dClose">Close (E)</button></p></div>`;
+        market.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{s.rows[+b.dataset.r].act();draw()});
+        market.querySelector("#dClose").onclick=api.closeMarket};
+      draw();api._redraw=draw},
     closeMarket(){api.marketOpen=false;market.style.display="none"}
   };
   return api;

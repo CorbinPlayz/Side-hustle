@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {heightAt,slopeAt} from "./terrain.js";
+import {RAV,ravPoint,shelf,pathCenter} from "./ravine.js";
 import {buildStall} from "./props.js";
 import {cabin} from "./town.js";
 import {makeCharacter,animateCharacter,defaultLook} from "./character.js";
@@ -13,7 +14,7 @@ const norm=a=>{while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return
 export class POIs{
   constructor({scene,rand,pickups,fx,dockA,stallPos,avoid}){
     Object.assign(this,{scene,rand,pickups,fx,dockA,stallPos,avoid});
-    this.group=new THREE.Group();scene.add(this.group);this.blockers=[];this.list=[];this.villagers=[];this.t=0;this.misty=[];
+    this.group=new THREE.Group();scene.add(this.group);this.blockers=[];this.embers=[];this.list=[];this.villagers=[];this.t=0;this.misty=[];
     this.coastPoint=(a)=>{for(let r=330;r>60;r-=1)if(heightAt(Math.cos(a)*r,Math.sin(a)*r)>.55)return r;return 200};
     this.lighthouse=this.buildLighthouse();this.wreck=this.buildWreck();this.cave=this.buildCave();this.village=this.buildVillage();
   }
@@ -114,48 +115,51 @@ export class POIs{
     const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,side:THREE.DoubleSide}));m.castShadow=m.receiveShadow=true;return m;
   }
   buildCave(){
-    let spot=null;
-    for(let k=0;k<6000&&!spot;k++){
-      const a=this.rand()*6.283,r=60+this.rand()*130,cx=Math.cos(a)*r,cz=Math.sin(a)*r,f=flatSpot(cx,cz,16,2);
-      if(f.mean>7&&f.mean<16&&f.rng<1.8&&Math.hypot(cx-this.stallPos.x,cz-this.stallPos.z)>70&&!this.avoid(cx,cz))spot={x:cx,z:cz,y:f.hi};
-    }
-    if(!spot){const a=.5;spot={x:Math.cos(a)*150,z:Math.sin(a)*150,y:heightAt(Math.cos(a)*150,Math.sin(a)*150)}}
-    const {x,z,y}=spot,face=Math.atan2(this.stallPos.z-z,this.stallPos.x-x),back=face+Math.PI;
+    const R0=RAV,sh=shelf(),[cx0,cz0]=ravPoint(sh.u,sh.vc+1.7),y=heightAt(...ravPoint(sh.u,sh.vc)),x=cx0,z=cz0;
+    const face=Math.atan2(-Math.cos(R0.th),Math.sin(R0.th)),back=face+Math.PI; // doorway looks out over the ravine
     const g=new THREE.Group();g.position.set(x,y,z);this.group.add(g);
-    const R=6.6;
-    // cave shell with a doorway, a dark floor and a rim of rubble so it sits in the ground
-    g.add(this.rockDome(R,.62,{nu:20,nv:9,face,door:.25,noise:.5}));
-    add(g,new THREE.CircleGeometry(R-.4,16),lam(0x3b3a3a),0,.06,0,-Math.PI/2,0,0,1,1,1,false);
-    for(let i=0;i<14;i++){const a=i/14*6.283;if(Math.abs(norm(a-face))<.3)continue;boulder(g,1+this.rand()*.9,Math.cos(a)*(R+.2),.2,Math.sin(a)*(R+.2),this.rand,.8)}
-    // doorway frame: two pillars and a lintel
-    for(const s of [-1,1]){const aa=face+s*.31;boulder(g,1.15,Math.cos(aa)*(R-.6),1.3,Math.sin(aa)*(R-.6),this.rand,1.7)}
-    boulder(g,1.2,Math.cos(face)*(R-.8),3.3,Math.sin(face)*(R-.8),this.rand,.65);
-    // stalactites and glowing crystals inside
-    for(let i=0;i<14;i++){const a=this.rand()*6.283,rr=this.rand()*R*.6;add(g,new THREE.ConeGeometry(.16+this.rand()*.14,.7+this.rand()*.8,5),lam(0x8a8680),Math.cos(a)*rr,R*.62*Math.cos(Math.asin(Math.min(.95,rr/R)))-.5,Math.sin(a)*rr,Math.PI,0,0)}
+    const R=4.9;
+    g.add(this.rockDome(R,.66,{nu:20,nv:9,face,door:.27,noise:.45}));
+    add(g,new THREE.CircleGeometry(R-.3,16),lam(0x3b3a3a),0,.06,0,-Math.PI/2,0,0,1,1,1,false);
+    for(let i=0;i<12;i++){const a=i/12*6.283;if(Math.abs(norm(a-face))<.35)continue;boulder(g,.9+this.rand()*.8,Math.cos(a)*(R+.1),.1,Math.sin(a)*(R+.1),this.rand,.8)}
+    for(const s2 of [-1,1]){const aa=face+s2*.34;boulder(g,1.05,Math.cos(aa)*(R-.5),1.2,Math.sin(aa)*(R-.5),this.rand,1.7)}
+    boulder(g,1.1,Math.cos(face)*(R-.7),3.0,Math.sin(face)*(R-.7),this.rand,.65);
+    for(let i=0;i<12;i++){const a=this.rand()*6.283,rr=this.rand()*R*.6;add(g,new THREE.ConeGeometry(.14+this.rand()*.12,.6+this.rand()*.7,5),lam(0x8a8680),Math.cos(a)*rr,R*.66*Math.cos(Math.asin(Math.min(.95,rr/R)))-.5,Math.sin(a)*rr,Math.PI,0,0)}
     const cm=lam(0x7ad8ff,{emissive:0x2a9ac8,emissiveIntensity:1.1,roughness:.2});
-    for(let c=0;c<5;c++){const ca=back+(c-2)*.55,cr=R*.62;for(let q=0;q<4;q++)add(g,new THREE.ConeGeometry(.2+this.rand()*.12,.9+this.rand()*1.1,5),cm,Math.cos(ca)*cr+(this.rand()-.5)*.8,.5+this.rand()*.3,Math.sin(ca)*cr+(this.rand()-.5)*.8,(this.rand()-.5)*.6,0,(this.rand()-.5)*.6)}
-    const L=new THREE.PointLight(0x5ad8ff,36,16);L.position.set(0,2.4,0);g.add(L);
-    // cliff behind with a waterfall into a pool
-    const cd=R+7.2,cx2=Math.cos(back)*cd,cz2=Math.sin(back)*cd,CR=8.5,CH=15;
-    {const cg=new THREE.CylinderGeometry(CR*.82,CR,CH,11,3,false),cp=cg.attributes.position;
-     for(let i=0;i<cp.count;i++){const px=cp.getX(i),pz=cp.getZ(i),ang=Math.atan2(pz,px),fa=Math.abs(norm(ang-(face-back+Math.PI)));const fk=Math.max(0,1-fa/.7);const k=1+(this.rand()-.5)*.14*(1-fk*.9);cp.setX(i,px*k);cp.setZ(i,pz*k);if(cp.getY(i)>0)cp.setY(i,cp.getY(i)+(this.rand()-.5)*1.4*(1-fk))}
-     const ccols=[];const cn=cg.toNonIndexed();const cpos=cn.attributes.position;for(let i=0;i<cpos.count;i+=3){const kk=.8+this.rand()*.3,top=(cpos.getY(i)+cpos.getY(i+1)+cpos.getY(i+2))/3>CH*.35;const c=new THREE.Color(top&&this.rand()<.5?0x5f8a4a:0x85837d).multiplyScalar(kk);for(let q=0;q<3;q++)ccols.push(c.r,c.g,c.b)}
-     cn.setAttribute("color",new THREE.Float32BufferAttribute(ccols,3));cn.computeVertexNormals();
-     const cm2=new THREE.Mesh(cn,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95}));cm2.castShadow=cm2.receiveShadow=true;cm2.position.set(cx2,CH/2,cz2);cm2.rotation.y=-(back+Math.PI)+Math.PI;g.add(cm2);
-    }
-    const wfx=cx2+Math.cos(face)*(CR*.8)*1.0,wfz=cz2+Math.sin(face)*(CR*.8)*1.0;
-    const wfM=new THREE.ShaderMaterial({transparent:true,side:THREE.DoubleSide,depthWrite:false,uniforms:{uTime:{value:0}},
+    for(let c=0;c<5;c++){const ca=back+(c-2)*.55,cr=R*.6;for(let q=0;q<3;q++)add(g,new THREE.ConeGeometry(.2+this.rand()*.12,.9+this.rand()*1.1,5),cm,Math.cos(ca)*cr+(this.rand()-.5)*.8,.5+this.rand()*.3,Math.sin(ca)*cr+(this.rand()-.5)*.8,(this.rand()-.5)*.6,0,(this.rand()-.5)*.6)}
+    const L=new THREE.PointLight(0x5ad8ff,30,14);L.position.set(0,2.2,0);g.add(L);
+    for(const s2 of [-1,1]){const aa=face+s2*.42,tx=Math.cos(aa)*(R+.9),tz=Math.sin(aa)*(R+.9);add(g,new THREE.CylinderGeometry(.07,.09,1.6,5),lam(0x5a3a1e),tx,.8,tz);add(g,new THREE.SphereGeometry(.24,6,5),lam(0xffa43a,{emissive:0xff8a1a,emissiveIntensity:1.8}),tx,1.75,tz);const tl=new THREE.PointLight(0xff9a3a,14,9);tl.position.set(tx,1.9,tz);g.add(tl)}
+    this.blockers.push({x,z,ring:{r:R,half:1.1,face,gap:.33}});
+    this.add("Lava ravine cave",x,z,y);
+    // ---- lava floor, glowing and animated
+    const lavaM=new THREE.ShaderMaterial({uniforms:{uTime:{value:0}},
+      vertexShader:"varying vec3 vW;void main(){vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}",
+      fragmentShader:"varying vec3 vW;uniform float uTime;float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}void main(){vec2 p=vW.xz*.35;float a=n(p+vec2(uTime*.08,0.))+.5*n(p*2.3-vec2(0.,uTime*.12))+.25*n(p*5.1+uTime*.05);a/=1.75;float crust=smoothstep(.42,.58,a);vec3 hot=mix(vec3(1.,.35,.04),vec3(1.,.82,.2),smoothstep(.3,.5,a));vec3 c=mix(hot*.95,vec3(.13,.05,.04),crust);gl_FragColor=vec4(c,1.);}"});
+    this.lava=lavaM;
+    {const [mx,mz]=ravPoint(R0.L/2,0),ly=R0.Yf+.18,seg=new THREE.Mesh(new THREE.PlaneGeometry(R0.L,R0.w0*2+.6),lavaM);seg.rotation.x=-Math.PI/2;seg.rotation.z=-R0.th;seg.position.set(mx,ly,mz);this.group.add(seg);
+     for(const uu of [0,R0.L]){const [ex,ez]=ravPoint(uu,0),cap=new THREE.Mesh(new THREE.CircleGeometry(R0.w0+.3,14),lavaM);cap.rotation.x=-Math.PI/2;cap.position.set(ex,ly,ez);this.group.add(cap)}
+     for(let i=0;i<4;i++){const [lx,lz]=ravPoint(8+i*18,0),pl=new THREE.PointLight(0xff6a1a,60,34);pl.position.set(lx,ly+3,lz);this.group.add(pl);this.glows=(this.glows||[]).concat(pl);this.embers.push(new THREE.Vector3(lx,ly,lz))}}
+    // ---- waterfall pouring down the head wall into the lava (steam where they meet)
+    {const wfM=new THREE.ShaderMaterial({transparent:true,side:THREE.DoubleSide,depthWrite:false,uniforms:{uTime:{value:0}},
       vertexShader:"varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
       fragmentShader:"varying vec2 vUv;uniform float uTime;float h(float n){return fract(sin(n)*43758.5);}void main(){float col=floor(vUv.x*9.);float s=h(col)*.6+.5;float f=fract(vUv.y*3.2*s+uTime*(1.1+h(col+3.)*.6));float streak=smoothstep(.0,.35,f)*.5+.35;float edge=smoothstep(0.,.12,vUv.x)*smoothstep(1.,.88,vUv.x);vec3 c=mix(vec3(.45,.78,.95),vec3(1.),streak);gl_FragColor=vec4(c,(.65+.3*streak)*edge);}"});
-    this.waterfall=wfM;const wf=new THREE.Mesh(new THREE.PlaneGeometry(3.2,CH-.4),wfM);wf.position.set(wfx+Math.cos(face)*.5,CH/2,wfz+Math.sin(face)*.5);wf.lookAt(new THREE.Vector3(wfx+Math.cos(face)*20,CH/2,wfz+Math.sin(face)*20));g.add(wf);
-    const px0=wfx+Math.cos(face)*2.6,pz0=wfz+Math.sin(face)*2.6;
-    add(g,new THREE.CircleGeometry(3.6,12),lam(0x4aa8d8,{transparent:true,opacity:.88,roughness:.2}),px0,.14,pz0,-Math.PI/2,0,0,1,1,1,false);
-    for(let i=0;i<9;i++){const a=i/9*6.283;boulder(g,.5+this.rand()*.4,px0+Math.cos(a)*3.9,.2,pz0+Math.sin(a)*3.9,this.rand,.7)}
-    this.misty.push(new THREE.Vector3(x+wfx+Math.cos(face)*1.2,y+.5,z+wfz+Math.sin(face)*1.2));
-    this.blockers.push({x,z,ring:{r:R,half:1.1,face,gap:.33}});this.blockers.push({x:x+cx2,z:z+cz2,r:CR+.5});
-    this.add("Waterfall cave",x,z,y);
-    const inner=[[0,0],[2.4,1.5],[-2.2,2],[.6,-3],[-3,-.8]].map(([lx,lz])=>[lx*.9,lz*.9]);
-    inner.forEach(([lx,lz],i)=>{this.pickups.addFixed(i<3?"crystal":"glowcap",x+lx,Math.max(y,heightAt(x+lx,z+lz))+.1,z+lz,i<3?420:300)});
+     this.waterfall=wfM;const N=26,W=1.7,P=[],UV=[],I=[];
+     for(let i=0;i<=N;i++){const t=1-i/N,d=R0.w0*.0+R0.w0+R0.ww*t+(t>.97?0:0);for(const sgn of [-1,1]){const [px,pz]=ravPoint(-d,sgn*W);const hh=heightAt(px,pz);const [ix,iz]=ravPoint(-d+.45,sgn*W);P.push(ix,hh+.22,iz);UV.push(sgn<0?0:1,i/N)}
+      if(i<N){const k=i*2;I.push(k,k+1,k+2,k+1,k+3,k+2)}}
+     const wg=new THREE.BufferGeometry();wg.setAttribute("position",new THREE.Float32BufferAttribute(P,3));wg.setAttribute("uv",new THREE.Float32BufferAttribute(UV,2));wg.setIndex(I);
+     this.group.add(new THREE.Mesh(wg,wfM));
+     // stream above the lip
+     const [sx0,sz0]=ravPoint(-(R0.w0+R0.ww)-.2,0),[sx1,sz1]=ravPoint(-(R0.w0+R0.ww)-9,0);
+     for(let i=0;i<=8;i++){const q=i/8,px=sx0+(sx1-sx0)*q,pz=sz0+(sz1-sz0)*q;add(this.group,new THREE.CylinderGeometry(1.7-q*.3,1.7-q*.3,.12,8),lam(0x59b4e2,{transparent:true,opacity:.85,roughness:.2}),px,heightAt(px,pz)+.08,pz,0,0,0,1,1,1,false)}
+     const [fx,fz]=ravPoint(-R0.w0+1.5,0);this.misty.push(new THREE.Vector3(fx,R0.Yf+.5,fz));
+    }
+    // ---- warning signs where the path starts, and loot on the way down
+    {const [sx,sz]=ravPoint(R0.pathU0+2,R0.w0+R0.ww+1.8),sg=new THREE.Group();sg.position.set(sx,heightAt(sx,sz),sz);sg.rotation.y=-R0.th+Math.PI/2;this.group.add(sg);
+     add(sg,new THREE.BoxGeometry(.18,1.9,.18),lam(0x6b4a26),0,.95,0);add(sg,new THREE.BoxGeometry(2.2,.9,.14),lam(0xd8432f),0,1.9,0);add(sg,new THREE.BoxGeometry(1.9,.2,.16),lam(0xfff1b0),0,1.9,0)}
+    const kinds=["crystal","glowcap","pearl","coin","crystal","glowcap","coin","pearl"];
+    const drop=(u,v,k)=>{const [px,pz]=ravPoint(u,v),h=heightAt(px,pz);this.pickups.addFixed(kinds[(this.rand()*kinds.length)|0],px,h+.1,pz,k)};
+    for(let i=0;i<7;i++){const u=R0.shelfU+2+i*((R0.pathU0-R0.shelfU-4)/6);drop(u,pathCenter(u)+(this.rand()-.5)*1.4,300+this.rand()*200)}
+    for(let i=0;i<5;i++){const a=back+(i-2)*.5,rr=R*.5;this.pickups.addFixed(kinds[(this.rand()*kinds.length)|0],x+Math.cos(a)*rr,y+.1,z+Math.sin(a)*rr,260+this.rand()*200)}
     return {x,z,y};
   }
   buildVillage(){
@@ -204,7 +208,9 @@ export class POIs{
     return best;
   }
   update(dt){
-    this.t+=dt;if(this.waterfall)this.waterfall.uniforms.uTime.value=this.t;
+    this.t+=dt;if(this.waterfall)this.waterfall.uniforms.uTime.value=this.t;if(this.lava)this.lava.uniforms.uTime.value=this.t;
+    if(this.glows)this.glows.forEach((l,i)=>{l.intensity=55+Math.sin(this.t*1.7+i*2)*14});
+    for(const e of this.embers)if(Math.random()<dt*6)this.fx.pixels.emit(new THREE.Vector3(e.x+(Math.random()-.5)*9,e.y,e.z+(Math.random()-.5)*9),1,[0xff7a1a,0xffc23a],{speed:.4,up:3.2,size:.12,life:1.6,gravity:-.3});
     for(const m of this.misty)if(Math.random()<dt*10)this.fx.pixels.emit(m,2,[0xffffff,0xcfeeff],{speed:1,up:1.6,size:.14,life:1.1,gravity:-.4});
     if(this.beam)this.beam.intensity=34+Math.sin(this.t*2)*8;
     for(const v of this.villagers){

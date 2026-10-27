@@ -22,8 +22,27 @@ export const GOODS=[
   {id:"crystal",name:"Cave Crystal",base:120,kind:"rare",find:"junk",color:0x7ad8ff},
   {id:"glowcap",name:"Glowcap",base:70,kind:"rare",find:"forage",color:0x4fe8ff},
   {id:"pine_log",name:"Pine Log",base:14,kind:"wood"},
-  {id:"oak_log",name:"Oak Log",base:24,kind:"wood"}
+  {id:"oak_log",name:"Oak Log",base:24,kind:"wood"},
+  {id:"necklace",name:"Shell Necklace",base:12,kind:"craft",color:0xf3c9b8},
+  {id:"msgbottle",name:"Message in a Bottle",base:20,kind:"craft",color:0x6fd0a8},
+  {id:"carving",name:"Wood Carving",base:48,kind:"craft",color:0xb59a74},
+  {id:"stew",name:"Forager Stew",base:30,kind:"craft",color:0xd8392f},
+  {id:"lamp",name:"Crystal Lamp",base:190,kind:"craft",color:0x7ad8ff}
 ];
+/** Workbench recipes: turn raw finds into something worth about double. */
+export const RECIPES=[
+  {id:"necklace",needs:{shell:3}},{id:"msgbottle",needs:{bottle:1,driftwood:1}},{id:"carving",needs:{pine_log:2}},
+  {id:"stew",needs:{berries:2,mushroom:1}},{id:"lamp",needs:{crystal:1,driftwood:1}}
+];
+/** Temporary boosts the travelling vendor sells. */
+export const PERKS=[
+  {id:"lucky",name:"Lucky bait",desc:"Your next 8 casts favour rare fish",cost:90},
+  {id:"tonic",name:"Energy tonic",desc:"Run 30% faster for 3 minutes",cost:70},
+  {id:"satchel",name:"Roomy satchel",desc:"+4 bag space for 6 minutes",cost:110}
+];
+export const ROLES=["buyer","jobs","vendor","trader"];
+export const ROLE_INFO={buyer:{label:"Buyer",line:"I pay extra for the right goods."},jobs:{label:"Job giver",line:"I need a hand with something."},vendor:{label:"Vendor",line:"Rare odds and ends, today only."},trader:{label:"Trader",line:"I move the market. Ask me what's hot."}};
+const JOB_ITEMS=["shell","driftwood","bottle","can","berries","mushroom","pine_log","oak_log","sardine","perch","bass"];
 export const ALL=[...FISH,...GOODS];
 export const byId=Object.fromEntries(ALL.map(f=>[f.id,f]));
 /** One-off tools. You start with nothing. */
@@ -41,15 +60,16 @@ export const BAG_CAP=[4,6,9,13,18];
 /** Where the money goes. */
 export const GOALS={plot:1200,boat:4200};
 export const PLOT_COUNT=10;
-export const catOf=id=>{const g=byId[id];if(!g)return "fish";if(g.kind==="wood")return "wood";if(!g.kind)return "fish";return g.find==="forage"?"forage":g.find==="junk"?"junk":"beach"};
+export const catOf=id=>{const g=byId[id];if(!g)return "fish";if(g.kind==="wood")return "wood";if(g.kind==="craft")return "craft";if(!g.kind)return "fish";return g.find==="forage"?"forage":g.find==="junk"?"junk":"beach"};
 export const CATS={
   fish:{label:"fish",up:"Fish festival in town! Fish prices are up for a while.",down:"A fish glut: prices for fish are down for a while."},
   wood:{label:"logs",up:"A big building project means logs are in demand.",down:"Too much timber around: log prices are down."},
   forage:{label:"forage",up:"Everyone wants a good stew. Berries and mushrooms are up.",down:"Foragers flooded the market: berries and mushrooms are down."},
+  craft:{label:"crafted goods",up:"Collectors are paying well for handmade goods.",down:"Handmade goods are a drug on the market this week."},
   beach:{label:"beach finds",up:"Tourists are in. Shells and bottles are selling high.",down:"Quiet week for tourists. Beach finds are down."}
 };
 /** Where you sell changes the price: the village pays extra for wood and forage but less for fish. */
-export const LOCATIONS={dock:{name:"Dock Market",fish:1.1,wood:1,forage:1,beach:1,junk:1},village:{name:"Village Market",fish:.8,wood:1.3,forage:1.25,beach:.95,junk:1.15}};
+export const LOCATIONS={dock:{name:"Dock Market",fish:1.1,wood:1,forage:1,beach:1,junk:1,craft:1.05},village:{name:"Village Market",fish:.8,wood:1.3,forage:1.25,beach:.95,junk:1.15,craft:1.12}};
 export const locMod=(id,loc)=>(LOCATIONS[loc]||LOCATIONS.dock)[catOf(id)];
 export const OUTFITS=["baker","fisher","lumberjack","sailor","keeper","villager","farmer"];
 const KEY="sidehustle.save.v2";
@@ -66,10 +86,12 @@ export class Economy{
     this.caught=0;this.earned=0;this.mult={};this.prev={};this.supply={};this.timer=0;
     // housing: price index, neighbours, plots (id -> owner). owner "me", "npc:<n>" or absent.
     this.house={index:1,owners:{},npcs:[],recent:0,sinceNpc:0,log:[]};this.event=null;this.nextEvent=6;
-    this.pieces=[];this.myPlot=null;this.playSeconds=0;
+    this.pieces=[];this.myPlot=null;this.playSeconds=0;this.stash=[];this.till=0;this.perk={lucky:0,tonic:0,satchel:0};this.deaths=0;
   }
-  get capacity(){return BAG_CAP[this.up.bag]}
-  get speedMul(){return 1+this.up.boots*.14}
+  get capacity(){return BAG_CAP[this.up.bag]+(this.perk.satchel>0?4:0)}
+  get speedMul(){return (1+this.up.boots*.14)*(this.perk.tonic>0?1.3:1)}
+  /** $ per minute the fish tanks and gardens in your house earn while you play. */
+  get homeRate(){const c=t=>this.pieces.filter(p=>p.t===t).length;return Math.min(c("tank"),4)*8+Math.min(c("garden"),4)*6}
   price(id,loc="dock"){return Math.max(1,Math.round(byId[id].base*this.mult[id]*locMod(id,loc)))}
   trend(id){const d=this.mult[id]-this.prev[id];return d>.012?1:d<-.012?-1:0}
   value(f,loc="dock"){return Math.max(1,Math.round(this.price(f.id,loc)*(f.w||1)))}
@@ -84,6 +106,8 @@ export class Economy{
    *  good, drift up when neighbours buy, and occasionally a town event pushes a whole category up or down for a few minutes. */
   tick(dt){
     const ev=[];this.timer+=dt;this.playSeconds+=dt;
+    for(const k of ["tonic","satchel"])if(this.perk[k]>0)this.perk[k]=Math.max(0,this.perk[k]-dt);
+    this.till=Math.min(this.homeRate*25,this.till+this.homeRate*dt/60);
     for(const f of ALL)this.supply[f.id]=Math.max(0,this.supply[f.id]-dt*.008);
     if(this.timer<30)return ev;
     this.timer=0;const n=this.house.npcs.length;
@@ -91,14 +115,15 @@ export class Economy{
     const E=this.event;
     if(E&&--E.left<=0){ev.push({type:"event",msg:`Prices for ${CATS[E.cat].label} are back to normal.`});this.event=null}
     else if(!E&&--this.nextEvent<=0){
-      const cat=Object.keys(CATS)[(this.rand()*4)|0],up=this.rand()<.55;
+      const cat=Object.keys(CATS)[(this.rand()*Object.keys(CATS).length)|0],up=this.rand()<.55;
       this.event={cat,mod:up?.3:-.25,left:8};this.nextEvent=14+((this.rand()*10)|0);
       ev.push({type:"event",msg:up?CATS[cat].up:CATS[cat].down});
     }
     for(const f of ALL){
       this.prev[f.id]=this.mult[f.id];
       this.supply[f.id]=Math.max(0,this.supply[f.id]-n*.01);
-      const target=1+(this.event&&catOf(f.id)===this.event.cat?this.event.mod:0)+n*.012-this.supply[f.id]*.6;
+      let mv=0;for(const q of this.house.npcs)if(q.role==="trader"){const c=catOf(f.id);if(c===q.wants)mv+=.07;else if(c===q.dumps)mv-=.05}
+      const target=1+(this.event&&catOf(f.id)===this.event.cat?this.event.mod:0)+n*.012+mv-this.supply[f.id]*.6;
       const step=(target-this.mult[f.id])*.22+(this.rand()-.5)*.03;
       this.mult[f.id]=Math.max(.55,Math.min(1.7,this.mult[f.id]+step));
     }
@@ -113,7 +138,7 @@ export class Economy{
       if(free.length>1){
         const plot=free[(this.rand()*free.length)|0],name=NAMES.find(x=>!h.npcs.some(p=>p.name===x))||"Guest"+n;
         const npc={id:"n"+Date.now().toString(36)+n,name,plot,color:COLORS[n%COLORS.length],outfit:OUTFITS[(this.house.npcs.length+((this.rand()*3)|0))%OUTFITS.length],look:(this.rand()*1000)|0};
-        h.npcs.push(npc);h.owners[plot]="npc:"+npc.id;h.sinceNpc=0;
+        this.giveRole(npc);h.npcs.push(npc);h.owners[plot]="npc:"+npc.id;h.sinceNpc=0;
         // every sale pushes the next one up harder than the last, but the neighbour cap keeps it from running away
         h.index*=1.07+n*.012;
         ev.push({type:"npc",npc,msg:`${name} bought a plot and moved in. Land prices jumped.`});
@@ -126,6 +151,37 @@ export class Economy{
     }
     this.save();ev.push({type:"prices"});return ev;
   }
+  /** Every neighbour has a job in town: buyer, job giver, vendor or trader. Spread them out so all four turn up. */
+  giveRole(npc){
+    if(!npc.role){const count=r=>this.house.npcs.filter(q=>q.role===r).length;npc.role=[...ROLES].sort((a,b)=>count(a)-count(b))[0]}
+    const cats=Object.keys(CATS);
+    if(!npc.wants)npc.wants=cats[(this.rand()*cats.length)|0];
+    if(!npc.dumps)npc.dumps=cats.filter(c=>c!==npc.wants)[(this.rand()*(cats.length-1))|0];
+    if(npc.role==="vendor"&&!npc.stock)npc.stock=PERKS.map(p=>p.id).sort(()=>this.rand()-.5).slice(0,2);
+    return npc;
+  }
+  count(id){return this.bag.filter(f=>f.id===id).length}
+  /** ---- workbench */
+  canCraft(r){return Object.entries(r.needs).every(([id,n])=>this.count(id)>=n)}
+  craft(id){const r=RECIPES.find(x=>x.id===id);if(!r||!this.canCraft(r))return false;
+    let net=1-Object.values(r.needs).reduce((a,b)=>a+b,0);if(this.bag.length+net>this.capacity)return false;
+    for(const [it,n] of Object.entries(r.needs))for(let i=0;i<n;i++)this.bag.splice(this.bag.findIndex(f=>f.id===it),1);
+    this.bag.push({id:r.id,w:1});this.save();return true}
+  /** ---- chest: safe from lava */
+  store(){let n=0;while(this.bag.length&&this.stash.length<40){this.stash.push(this.bag.shift());n++}this.save();return n}
+  fetch(){let n=0;while(this.stash.length&&this.bag.length<this.capacity){this.bag.push(this.stash.shift());n++}this.save();return n}
+  collectTill(){const t=Math.floor(this.till);if(t<1)return 0;this.till-=t;this.money+=t;this.earned+=t;this.save();return t}
+  /** ---- neighbours */
+  buyerSell(npc){let total=0;const keep=[];for(const f of this.bag){if(catOf(f.id)===npc.wants){total+=Math.round(this.value(f,"dock")*1.3);this.supply[f.id]+=.03}else keep.push(f)}
+    const sold=this.bag.length-keep.length;this.bag=keep;this.money+=total;this.earned+=total;this.save();return {total,sold}}
+  jobFor(npc){if(!npc.job){const id=JOB_ITEMS[(this.rand()*JOB_ITEMS.length)|0],qty=2+((this.rand()*3)|0);npc.job={id,qty,pay:Math.round(byId[id].base*qty*2.2/5)*5+10}}return npc.job}
+  deliverJob(npc){const j=this.jobFor(npc);if(this.count(j.id)<j.qty)return false;
+    for(let i=0;i<j.qty;i++)this.bag.splice(this.bag.findIndex(f=>f.id===j.id),1);
+    this.money+=j.pay;this.earned+=j.pay;npc.job=null;this.save();return j.pay}
+  buyPerk(npc,id){const p=PERKS.find(x=>x.id===id);if(!p||!(npc.stock||[]).includes(id)||this.money<p.cost)return false;
+    this.money-=p.cost;if(id==="lucky")this.perk.lucky=8;else if(id==="tonic")this.perk.tonic=180;else this.perk.satchel=360;
+    npc.stock=npc.stock.filter(x=>x!==id);this.save();return true}
+  tips(){const rows=ALL.map(f=>({id:f.id,name:f.name,m:this.mult[f.id]})).sort((a,b)=>b.m-a.m);return {hot:rows.slice(0,3),cold:rows.slice(-3).reverse()}}
   addItem(id,w=1){if(this.bag.length>=this.capacity)return false;this.bag.push({id,w});return true}
   addFish(f){if(this.bag.length>=this.capacity)return false;this.bag.push(f);this.caught++;return true}
   sellAll(loc="dock"){
@@ -135,6 +191,8 @@ export class Economy{
     this.money+=total;this.earned+=total;this.recentSale=total;this.bag=[];this.save();return total;
   }
   toolCost(id){const t=TOOLS.find(x=>x.id===id);return this.tools[id]?null:t.cost}
+  /** Falling in lava: lose a fifth of your money and everything in the bag. */
+  die(){const lost=Math.floor(this.money*.2),bagN=this.bag.length;this.money-=lost;this.bag=[];this.deaths=(this.deaths|0)+1;this.save();return {lost,bagN}}
   buyTool(id){const c=this.toolCost(id);if(c==null||this.money<c)return false;this.money-=c;this.tools[id]=true;this.save();return true}
   upgradeCost(id){const u=UPGRADES.find(x=>x.id===id),lv=this.up[id];if(lv>=u.max)return null;return u.costs[lv]}
   canUpgrade(id){const u=UPGRADES.find(x=>x.id===id);return !u.needs||this.tools[u.needs]}
@@ -143,7 +201,7 @@ export class Economy{
     if(this.myPlot!=null||this.house.owners[id])return false;const c=this.plotPrice(id);if(this.money<c)return false;
     this.money-=c;this.myPlot=id;this.house.owners[id]="me";this.save();return true;
   }
-  save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,t:Date.now(),money:this.money,event:this.event,nextEvent:this.nextEvent,bag:this.bag,tools:this.tools,up:this.up,caught:this.caught,earned:this.earned,house:this.house,pieces:this.pieces,myPlot:this.myPlot,playSeconds:this.playSeconds,mult:this.mult,supply:this.supply}));return true}catch(e){return false}}
+  save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,t:Date.now(),money:this.money,event:this.event,nextEvent:this.nextEvent,bag:this.bag,tools:this.tools,up:this.up,caught:this.caught,earned:this.earned,house:this.house,pieces:this.pieces,myPlot:this.myPlot,stash:this.stash,till:this.till,perk:this.perk,deaths:this.deaths,playSeconds:this.playSeconds,mult:this.mult,supply:this.supply}));return true}catch(e){return false}}
   load(){try{
     const s=JSON.parse(localStorage.getItem(KEY)||"null");if(!s||s.v!==2)return;
     this.money=s.money|0;this.bag=(s.bag||[]).filter(f=>byId[f.id]);Object.assign(this.tools,s.tools||{});Object.assign(this.up,s.up||{});
@@ -151,6 +209,8 @@ export class Economy{
     if(s.house)this.house={...this.house,...s.house};
     for(const id in (s.mult||{}))if(byId[id])this.mult[id]=s.mult[id],this.prev[id]=s.mult[id];
     for(const id in (s.supply||{}))if(byId[id])this.supply[id]=s.supply[id];
+    this.stash=(s.stash||[]).filter(f=>byId[f.id]);this.till=s.till||0;Object.assign(this.perk,s.perk||{});this.deaths=s.deaths|0;
+    this.house.npcs.forEach(n=>this.giveRole(n));
     this.event=s.event||null;if(s.nextEvent)this.nextEvent=s.nextEvent;this.loaded=true;
   }catch(e){}}
   reset(){this.fresh();ALL.forEach(f=>{this.mult[f.id]=1;this.prev[f.id]=1;this.supply[f.id]=0});this.save()}

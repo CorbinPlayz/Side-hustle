@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import {heightAt,slopeAt} from "./terrain.js";
+import {inRavine} from "./ravine.js";
 import {byId} from "./economy.js";
 /** Things lying around to pick up: shells and bottles on the beach, junk and coins inland, berry bushes in the woods. They respawn somewhere new. */
 const mat=(c,o={})=>new THREE.MeshStandardMaterial({color:c,flatShading:true,roughness:.8,...o});
@@ -39,7 +40,7 @@ export class Pickups{
   spot(zone){
     for(let k=0;k<500;k++){
       const a=this.rand()*6.283,r=40+this.rand()*230,x=Math.cos(a)*r,z=Math.sin(a)*r,h=heightAt(x,z);
-      if(ZONES[zone](h)&&slopeAt(x,z)<(zone==="beach"?.5:.4)&&!this.avoid(x,z))return [x,h,z];
+      if(ZONES[zone](h)&&slopeAt(x,z)<(zone==="beach"?.5:.4)&&!this.avoid(x,z)&&!inRavine(x,z,4))return [x,h,z];
     }
     return null;
   }

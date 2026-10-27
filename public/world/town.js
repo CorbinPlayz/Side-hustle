@@ -117,6 +117,7 @@ export class Town{
       this.npcViews.set(n.id,{mesh,home:p,target:null,wait:1+this.rand()*3,phase:this.rand()*6,going:false,visit:20+this.rand()*60});
     }
   }
+  nearestNpc(x,z,range=3.2){let b=null,bd=range;for(const [id,nv] of this.npcViews){const d=Math.hypot(nv.mesh.position.x-x,nv.mesh.position.z-z);if(d<bd){const n=this.eco.house.npcs.find(q=>q.id===id);if(n){bd=d;b=n}}}return b}
   /** Fists: returns the neighbour you hit, if any, and knocks them back. */
   punchAt(x,z,dx,dz){
     const dl=Math.hypot(dx,dz)||1;dx/=dl;dz/=dl;let best=null,bd=2.5;

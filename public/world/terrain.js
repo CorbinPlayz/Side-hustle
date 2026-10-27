@@ -1,27 +1,8 @@
 import * as THREE from "three";
 import {fbm} from "./noise.js";
-export const WORLD={size:640,seed:7,waterY:0};
-const R=250;
-/** Forest island height: beach ring, rolling hills, a pond in the middle. Pure function so the server can reuse it later. */
-export function heightAt(x,z){
-  const r=Math.hypot(x,z),a=Math.atan2(z,x);
-  const wob=(fbm(Math.cos(a)*1.6+5,Math.sin(a)*1.6+5,WORLD.seed,3)-.45)*120; // ragged coastline
-  const rr=r-wob;
-  let m=1-rr/R; // 1 at centre, 0 at coast
-  m=Math.max(-1,m);
-  let h=m>0?Math.pow(m,.75)*22:m*30;
-  h+=(fbm(x*.012,z*.012,WORLD.seed+3,4)-.45)*16*Math.max(0,Math.min(1,m*3));
-  h+=(fbm(x*.06,z*.06,WORLD.seed+9,2)-.5)*1.6*Math.max(0,Math.min(1,m*4));
-  h+=(fbm(x*.31+9,z*.31+4,WORLD.seed+31,2)-.5)*.55*Math.max(0,Math.min(1,m*5)); // little lumps so the ground is not planar
-  // pond
-  const pd=Math.hypot(x-40,z+30);
-  if(pd<46)h=Math.min(h,-1.5+Math.pow(pd/46,2)*(h+1.5));
-  return h-1.2;
-}
-export function slopeAt(x,z){
-  const e=1.2,hx=heightAt(x+e,z)-heightAt(x-e,z),hz=heightAt(x,z+e)-heightAt(x,z-e);
-  return Math.hypot(hx,hz)/(2*e);
-}
+import {WORLD,baseH,slopeAt,heightAt} from "./heightfield.js";
+import {ravCoords,RAV,onPath} from "./ravine.js";
+export {WORLD,slopeAt,heightAt};
 const C=(h)=>new THREE.Color(h);
 const SAND=C(0xe9dca4),SAND2=C(0xd9c78c),WET=C(0xb9a672),DRY=C(0xf0e6b8);
 const GRASSES=[C(0x86c94f),C(0x6fb847),C(0x9ad05a),C(0x5da63f),C(0xa4c850)],DEEP=C(0x2f7a39),MEAD=C(0xb4d65c),ROCK=C(0x8b857a),ROCK2=C(0xa39b8a),DIRT=C(0xa27a4c),DIRT2=C(0x8a6540);
@@ -42,12 +23,16 @@ export function buildTerrain(){
     centers[i/3*2]=cx;centers[i/3*2+1]=cz;
     const ny=nor.getY(i),n=fbm(cx*.05,cz*.05,WORLD.seed+21,3),n2=fbm(cx*.13+11,cz*.13,WORLD.seed+5,3),n3=fbm(cx*.4,cz*.4,WORLD.seed+8,2);
     const jitter=(((cx*12.9898+cz*78.233)%1+1)%1-.5)*.1;
-    if(cy<-.25)tmp.copy(WET).lerp(C(0x8f8760),Math.min(1,-cy/5));
+    const rc=ravCoords(cx,cz),inR=rc.d<RAV.w0+RAV.ww+.5;
+    if(inR&&rc.d<RAV.w0+.3)tmp.set(0x2b2422).lerp(C(0x4a3a30),n3); // basalt floor
+    else if(ny>.88&&onPath(cx,cz,-.3)&&cy>RAV.Yf+1)tmp.set(0x8f7a58).lerp(C(0x75633f),n3);
+    else if(cy<-.25)tmp.copy(WET).lerp(C(0x8f8760),Math.min(1,-cy/5));
     else if(cy<.55)tmp.copy(WET).lerp(SAND2,Math.min(1,(cy+.25)/.8)); // damp sand at the waterline
     else if(cy<1.9)tmp.copy(SAND).lerp(DRY,n2).lerp(SAND2,n3*.5);
     else if(ny<.8){ // steep ground: layered rock
-      const strata=Math.sin(cy*2.3+n*6)*.5+.5;tmp.copy(ROCK).lerp(ROCK2,strata);
+      const strata=Math.sin(cy*1.7+n*6)*.5+.5;tmp.copy(ROCK).lerp(ROCK2,strata*.7).multiplyScalar(.9);
       tmp.lerp(GRASSES[1],Math.max(0,ny-.62)*2.5);
+      if(inR){const dd=cy-RAV.Yf;tmp.multiplyScalar(.75+n3*.25);if(dd<4)tmp.lerp(C(0x3a2a24),1-dd/4);else if(dd>10)tmp.lerp(GRASSES[3],.18)}
     }else{
       // meadow: patches of different greens, dark forest floor where the woods are thick, pale dry grass on the high bits
       const gi=Math.min(4,Math.floor(n2*5));tmp.copy(GRASSES[gi]).lerp(GRASSES[(gi+2)%5],n3*.6);
