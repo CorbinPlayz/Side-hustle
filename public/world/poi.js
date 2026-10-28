@@ -105,8 +105,8 @@ export class POIs{
     for(const [px,pz,pr,pl] of [[3.2,-.8,.4,2.2],[2.6,.6,-.9,1.7],[-3.0,-2.4,.2,2.0]])add(g,new THREE.BoxGeometry(.3,.1,pl),woods[1],px,.35,pz,0,pr,.12);
     // sand piled against the hull
     for(let i=0;i<8;i++){const sa=i/8*6.28,m=add(g,new THREE.IcosahedronGeometry(1.6,1),lam(0xdcc98f),Math.cos(sa)*2.7,.0,Math.sin(sa)*6.0,0,0,0,1,.3,1,false)}
-    this.blockers.push({x,z,r:2.4,oval:{a:g.rotation.y,hl:4.8,hw:1.8}});this.add("Shipwreck",x,z,y);
-    const spots=[[0,0.5],[-.8,-1.5],[.5,2.6],[.2,-3.6],[1.2,-.6],[-1,1.8]];
+    this.blockers.push({x,z,r:2.4,oval:{a:g.rotation.y,hl:7,hw:2.5}});this.add("Shipwreck",x,z,y);
+    const spots=[[3.3,.5],[-3.2,-1.5],[3.2,3.0],[.4,-8.1],[-3.3,2.6],[.3,7.9]]; // around the hull, outside the solid part
     spots.forEach(([lx,lz],i)=>{const c=Math.cos(g.rotation.y),s=Math.sin(g.rotation.y),wx=x+lx*c+lz*s,wz=z-lx*s+lz*c;this.pickups.addFixed(["bottle","coin","pearl","bottle","coin","shell"][i],wx,Math.max(y,heightAt(wx,wz))+.12,wz,240)});
     return {x,z};
   }
@@ -210,7 +210,8 @@ export class POIs{
     for(const b of this.blockers){
       const dx=x-b.x,dz=z-b.z,d=Math.hypot(dx,dz);
       if(b.ring){if(d<b.ring.r+.9&&d>b.ring.r-1.2){if(Math.abs(norm(Math.atan2(dz,dx)-b.ring.face))>b.ring.gap)return true}}
-      else if(b.oval){const c=Math.cos(-b.oval.a),s=Math.sin(-b.oval.a),lx=dx*c-dz*s,lz=dx*s+dz*c;if(Math.abs(lx)<b.oval.hw&&Math.abs(lz)<b.oval.hl)return true}
+      else if(b.oval){const c=Math.cos(b.oval.a),s=Math.sin(b.oval.a),lx=dx*c-dz*s,lz=dx*s+dz*c; // inverse of rotation.y=a
+      if(Math.abs(lx)<b.oval.hw&&Math.abs(lz)<b.oval.hl)return true}
       else if(d<b.r)return true;
     }
     return false;
