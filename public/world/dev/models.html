@@ -4,7 +4,9 @@
 <script type="module">
 import * as THREE from "three";
 import {cabin} from "../town.js";
+import {cabinK,HOUSE_MODELS} from "../houses.js";
 import {PIECES} from "../build.js";
+import {loadModels,model,size} from "../models.js";
 import {makeCharacter,defaultLook,NPC_OUTFITS} from "../character.js";
 const q=new URLSearchParams(location.search),what=q.get("m")||"cabin",angles=+(q.get("a")||4);
 const W=1200,H=700;const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setSize(W,H);document.body.appendChild(r.domElement);r.shadowMap.enabled=true;
@@ -12,14 +14,16 @@ const sc=new THREE.Scene();sc.background=new THREE.Color(0xcfd8e0);
 sc.add(new THREE.HemisphereLight(0xffffff,0x889,1.1));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(5,10,6);sc.add(sun);
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x8fbf6a}));floor.rotation.x=-Math.PI/2;sc.add(floor);
 let items=[];
+if(what==="glb"){const names=(q.get("list")||"").split(",");const miss=await loadModels(names);window.__miss=miss;items=names.filter(n=>!miss.includes(n)).map(n=>{const m=model(n);const b=size(n);m.userData.h=b.max.y;(window.__sizes=window.__sizes||{})[n]=[b.min.x,b.min.y,b.min.z,b.max.x,b.max.y,b.max.z].map(v=>+v.toFixed(2));return m})}
 if(what==="cabin")items=[cabin(0xe5654a)];
+if(what==="cabink"){await loadModels(HOUSE_MODELS);items=[cabinK()]}
 else if(what==="pieces")items=PIECES.map(p=>p.make());
 else if(what==="char"){const k=+(q.get("k")||0),o=Object.keys(NPC_OUTFITS)[k%Object.keys(NPC_OUTFITS).length];items=[makeCharacter(defaultLook(k*3+1),o)]}
 else if(what==="player")items=[makeCharacter(defaultLook(2),null)]
 else if(what==="chars")items=NPC_OUTFITS?Object.keys(NPC_OUTFITS).map((k,i)=>makeCharacter(defaultLook(i*3+1),k)):[makeCharacter(defaultLook(1),"baker")];
 const bb=new THREE.Box3();
-const cols=Math.min(items.length,4),rows=Math.ceil(items.length/cols);
-const pad=what==="pieces"?4:(what==="cabin"?10:3);
+const cols=Math.min(items.length,+(q.get('cols')||4)),rows=Math.ceil(items.length/cols);
+const pad=+(q.get("pad")||0)||(what==="pieces"?4:(what==="cabin"?10:3));
 items.forEach((m,i)=>{m.position.set((i%cols-(cols-1)/2)*pad,0,(Math.floor(i/cols)-(rows-1)/2)*pad);sc.add(m)});
 const cam=new THREE.PerspectiveCamera(40,W/H,.1,200);
 const span=(what==='char'||what==='player')?1.2:Math.max(cols,rows)*pad;cam.position.set(0,span*.55+2,span*1.1+4);cam.lookAt(0,1,0);if(q.get('face')){cam.position.set(0,1.9,2.2);}

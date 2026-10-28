@@ -37,7 +37,7 @@ scene.add(buildSky());
 const clouds=buildClouds(rand);scene.add(clouds);
 scene.add(buildTerrain());
 const water=buildWater(FOG);scene.add(water);
-const forest=buildForest(rand,uniforms);scene.add(forest);
+const forest=await buildForest(rand,uniforms);scene.add(forest);
 const mushrooms=buildMushrooms(rand);scene.add(mushrooms);
 // dock: walk out from the island centre until we hit water
 let dockA=1.2,dx=0,dz=0;

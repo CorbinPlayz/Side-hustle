@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import {heightAt,slopeAt} from "./terrain.js";
 import {PLOT_COUNT,GOALS} from "./economy.js";
+import {cabinK} from "./houses.js";
 import {makeCharacter,animateCharacter,defaultLook} from "./character.js";
 export const PLOT=16; // metres per side (8 x 8 grid cells of 2 m)
 const lam=(c,o={})=>new THREE.MeshStandardMaterial({color:c,flatShading:true,roughness:.85,...o});
@@ -31,7 +32,8 @@ function signTexture(lines,bg="#8a5a2a"){
   lines.forEach((l,i)=>{g.font=(l.size||40)+"px Georgia,serif";g.fillText(l.t,128,l.y)});
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
-export function cabin(color){
+export function cabin(color){return cabinK(color)||cabinProc(color)}
+function cabinProc(color){
   const g=new THREE.Group(),wall=lam(0xc9a066),log=lam(0xb08a52),dark=lam(0x7a5a34),trim=lam(color),roof=lam(0x7a3b2a),roof2=lam(0x8a4632),stone=lam(0x8d877c),glass=lam(0xa8dcf2,{emissive:0x335566});
   box(6.4,.5,6.4,stone,0,.15,0,g);box(6,.12,6,lam(0x8a6a44),0,.42,0,g);
   const W=(w,h,d,x,y,z)=>box(w,h,d,wall,x,y,z,g);
@@ -70,14 +72,14 @@ export class Town{
   /** Fell trees and pick mushrooms inside the plots so there is room to build. */
   clear(forest,mushrooms){
     const m=new THREE.Matrix4().makeScale(0,0,0),inside=(x,z)=>this.plots.some(p=>Math.abs(x-p.x)<PLOT/2+2.5&&Math.abs(z-p.z)<PLOT/2+2.5);
-    for(const g of forest.userData.trees){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
+    for(const g of [...forest.userData.trees,...(forest.userData.rockGroups||[])]){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
     {const G=forest.userData.grassIm;if(G&&G.im){G.list.forEach((o,i)=>{if(inside(o[0],o[2]))G.im.setMatrixAt(i,m)});G.im.instanceMatrix.needsUpdate=true}}
     for(const n of mushrooms.userData.nodes){let ch=false;n.list.forEach((o,i)=>{if(inside(o.x,o.z)){o.alive=false;n.im.setMatrixAt(i,m);ch=true}});if(ch)n.im.instanceMatrix.needsUpdate=true}
   }
   clearCircle(forest,mushrooms,cx,cz,r){
     const m=new THREE.Matrix4().makeScale(0,0,0),inside=(x,z)=>Math.hypot(x-cx,z-cz)<r;
     {const G=forest.userData.grassIm;if(G&&G.im){G.list.forEach((o,i)=>{if(Math.hypot(o[0]-cx,o[2]-cz)<r*.78)G.im.setMatrixAt(i,m)});G.im.instanceMatrix.needsUpdate=true}}
-    for(const g of forest.userData.trees){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
+    for(const g of [...forest.userData.trees,...(forest.userData.rockGroups||[])]){let ch=false;g.list.forEach((o,i)=>{if(inside(o[0],o[2])){o.gone=true;g.im.setMatrixAt(i,m);ch=true}});if(ch)g.im.instanceMatrix.needsUpdate=true}
     for(const n of mushrooms.userData.nodes){let ch=false;n.list.forEach((o,i)=>{if(inside(o.x,o.z)){o.alive=false;n.im.setMatrixAt(i,m);ch=true}});if(ch)n.im.instanceMatrix.needsUpdate=true}
   }
   plotAt(x,z,pad=0){return this.plots.find(p=>Math.abs(x-p.x)<=PLOT/2+pad&&Math.abs(z-p.z)<=PLOT/2+pad)}
@@ -104,7 +106,7 @@ export class Town{
       else{
         const npc=h.npcs.find(n=>"npc:"+n.id===owner);
         this.setSign(v,[{t:npc?npc.name:"Neighbour",y:78,size:44}],"#6a3a2a");
-        v.house=cabin(npc?npc.color:0xe5654a);v.house.position.set(0,p.y,0);v.house.rotation.y=Math.atan2(this.stallPos.x-p.x,this.stallPos.z-p.z); // door faces the marketv.group.add(v.house);
+        v.house=cabin(npc?npc.color:0xe5654a);v.house.position.set(0,p.y,0);v.house.rotation.y=Math.atan2(this.stallPos.x-p.x,this.stallPos.z-p.z); v.group.add(v.house); // door faces the market
       }
     }
     // neighbours
