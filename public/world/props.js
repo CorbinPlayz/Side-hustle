@@ -233,6 +233,6 @@ export async function buildForest(rand,uniforms){
   group.userData.rockGroups=[...place(["n/Rock_Medium_1","n/Rock_Medium_2","n/Rock_Medium_3"],rocks,{target:1.6,shadow:true}),...place(["n/Pebble_Round_1","n/Pebble_Round_3","n/Pebble_Square_1"],pebbles,{target:.5,shadow:false})];
   place(["n/Fern_1"],ferns,{target:.9,wind:1.4,shadow:false});
   place(["n/Flower_3_Group","n/Flower_4_Group"],flowers,{target:.55,wind:1.6,shadow:false});
-  group.userData.rocks=rocks.map(o=>{const c=[o[0],o[1],o[2],o[3]*.62,o[4]];Object.defineProperty(c,"gone",{get:()=>o.gone});return c});
+  group.userData.rocks=rocks.map(o=>{const c=[o[0],o[1],o[2],o[3]*1.25,o[4]];Object.defineProperty(c,"gone",{get:()=>o.gone});return c});
   return group;
 }

@@ -4,7 +4,7 @@ export function makeCollider(forest,extra=[]){
   const grid=new Map(),key=(i,j)=>i*100003+j;
   const put=(c,i,j)=>{const k=key(i,j);let a=grid.get(k);if(!a)grid.set(k,a=[]);a.push(c)};
   const add=c=>{const r=c.r+.1;for(let i=Math.floor((c.x-r)/CELL);i<=Math.floor((c.x+r)/CELL);i++)for(let j=Math.floor((c.z-r)/CELL);j<=Math.floor((c.z+r)/CELL);j++)put(c,i,j)};
-  for(const g of forest.userData.trees||[])for(const o of g.list)add({x:o[0],z:o[2],r:.55*o[3]+.12,o});
+  for(const g of forest.userData.trees||[])for(const o of g.list)add({x:o[0],z:o[2],r:.7*o[3]+.15,o});
   for(const o of forest.userData.rocks||[])add({x:o[0],z:o[2],r:.85*o[3],o});
   for(const c of extra)add(c);
   return {
