@@ -43,54 +43,68 @@ export class POIs{
   }
   buildWreck(){
     const a=this.dockA-1.55,r=this.coastPoint(a)-2,x=Math.cos(a)*r,z=Math.sin(a)*r,y=heightAt(x,z);
-    const g=new THREE.Group();g.position.set(x,y-.55,z);g.rotation.set(0,-a+Math.PI/2+.4,0);this.group.add(g);
-    const ship=new THREE.Group();ship.rotation.set(.07,0,.3);ship.scale.setScalar(1.3);g.add(ship); // listing on the sand, bow up a bit
-    const rand=this.rand,N=15,K=9,L=11;
-    const woods=[0x7b5a38,0x6d4e31,0x8a6844,0x5f452c].map(c=>new THREE.Color(c));
-    const hull=(scale,inner)=>{
-      const rows=[];
-      for(let i=0;i<=N;i++){const t=i/N,zz=(t-.5)*L;
-        let w=2.15*Math.pow(Math.sin(Math.PI*(.1+.84*t)),.6)*(1-.88*Math.pow(t,4));w=Math.max(.12,w)*scale;
-        const h=(1.55+1.1*Math.pow(t,3)+.25*(1-t))*scale,keel=(.55+.4*Math.sin(Math.PI*t))*scale;
-        const row=[];for(let k=0;k<K;k++){const th=-Math.PI/2+k/(K-1)*Math.PI,c=Math.pow(Math.max(0,Math.cos(th)),.75);row.push(new THREE.Vector3(w*Math.sin(th),h*(1-c)-keel*.0+(inner?.12:0),zz))}
-        rows.push(row)}
-      return rows};
-    const outer=hull(1,false),innerR=hull(.9,true);
-    const pos=[],col=[];const tri=(a,b,c,colr)=>{for(const q of [a,b,c])pos.push(q.x,q.y,q.z);for(let i=0;i<3;i++)col.push(colr.r,colr.g,colr.b)};
-    const shade=(c,k)=>c.clone().multiplyScalar(k);
-    for(let i=0;i<N;i++)for(let k=0;k<K-1;k++){
-      const t=i/N,broken=(t>.42&&t<.7&&k>4&&((i*7+k*3)%5<3))||(t>.78&&k>5&&(i%3===0));
-      const c=shade(woods[(k+(i>>1))%4],.85+rand()*.3);
-      if(!broken){tri(outer[i][k],outer[i+1][k],outer[i][k+1],c);tri(outer[i][k+1],outer[i+1][k],outer[i+1][k+1],c)}
-      const ci=shade(woods[3],.8+rand()*.25);
-      if(!broken){tri(innerR[i][k],innerR[i][k+1],innerR[i+1][k],ci);tri(innerR[i][k+1],innerR[i+1][k+1],innerR[i+1][k],ci)}
+    const g=new THREE.Group();g.position.set(x,y-.35,z);g.rotation.set(0,-a+Math.PI/2+.4,0);this.group.add(g);
+    const ship=new THREE.Group();ship.rotation.set(.05,0,.22);ship.scale.setScalar(1.25);g.add(ship); // resting on its side in the sand, bow slightly up
+    const rand=this.rand,L=12,ST=13,SK=6; // stations along the length, strakes per side
+    const woods=[0x8a6844,0x7b5a38,0x6d4e31,0x94714a].map(c=>lam(c)),dark=lam(0x4a3522),mid=lam(0x6a4a30),iron=lam(0x3a3a40);
+    // hull cross-section: half-width and gunwale height along the length (t=0 stern, t=1 bow)
+    const W=t=>2.1*Math.pow(Math.sin(Math.PI*(.06+.88*t)),.65)*(1-.75*Math.pow(t,5))+.05;
+    const Hh=t=>1.75+1.15*Math.pow(t,3.2)+.2*(1-t);
+    const pt=(t,u,side)=>{ // u 0 = keel .. 1 = gunwale
+      const th=u*Math.PI/2,c=Math.pow(Math.max(0,Math.cos(th)),.8);return new THREE.Vector3(side*W(t)*Math.sin(th),Hh(t)*(1-c)+.1,(t-.5)*L)};
+    // a thin board lying between two surface points, thickness along the hull normal
+    const board=(p0,p1,p2,p3,mat,th=.1)=>{ // quad p0 p1 (station i) p2 p3 (station i+1)
+      const c=p0.clone().add(p1).add(p2).add(p3).multiplyScalar(.25);
+      const zA=p2.clone().add(p3).multiplyScalar(.5).sub(p0.clone().add(p1).multiplyScalar(.5)),yA=p1.clone().add(p3).multiplyScalar(.5).sub(p0.clone().add(p2).multiplyScalar(.5));
+      const lz=zA.length(),ly=yA.length();zA.normalize();const xA=new THREE.Vector3().crossVectors(yA.clone().normalize(),zA).normalize();const yO=new THREE.Vector3().crossVectors(zA,xA);
+      const m=new THREE.Mesh(new THREE.BoxGeometry(th,ly*.94,lz*1.02),mat);m.position.copy(c);m.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(xA,yO,zA));m.castShadow=m.receiveShadow=true;ship.add(m);return m};
+    // keel, stem and stern posts
+    add(ship,new THREE.BoxGeometry(.32,.3,L*.96),dark,0,.0,0);
+    add(ship,new THREE.BoxGeometry(.26,2.6,.3),dark,0,1.3+Hh(1)*.35,L/2-.1,.5,0,0);
+    add(ship,new THREE.BoxGeometry(.3,1.9,.3),dark,0,1.1,-L/2+.1,-.15,0,0);
+    // planking: starboard side is smashed open amidships, port side is mostly intact
+    for(const side of [-1,1])for(let i=0;i<ST;i++)for(let k=0;k<SK;k++){
+      const t0=i/ST,t1=(i+1)/ST,u0=k/SK,u1=(k+1)/SK,tm=(t0+t1)/2;
+      let gone=false;
+      if(side===1&&tm>.33&&tm<.72&&k>=2)gone=true;           // big hole
+      else if(side===1&&tm>.2&&tm<.8&&k>=4&&((i+k)%3===0))gone=true;
+      else if(side===-1&&tm>.45&&tm<.6&&k>=4)gone=true;       // a smaller gap on the other side
+      else if(tm>.88&&k>=3)gone=true;                        // bow rail torn off
+      else if(tm<.05&&k>=5)gone=true;
+      if(gone)continue;
+      const m=woods[(i+k*2)%4];
+      board(pt(t0,u0,side),pt(t0,u1,side),pt(t1,u0,side),pt(t1,u1,side),m);
     }
-    // stern transom and bow stem
-    const tr=[outer[0][0],outer[0][K-1],innerR[0][K-1],innerR[0][0]];tri(outer[0][0],outer[0][K-1],outer[0][4],woods[1]);tri(outer[0][0],outer[0][4],outer[0][K-1],woods[1]);
-    const gg=new THREE.BufferGeometry();gg.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));gg.setAttribute("color",new THREE.Float32BufferAttribute(col,3));gg.computeVertexNormals();
-    const hm=new THREE.Mesh(gg,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.9,side:THREE.DoubleSide}));hm.castShadow=hm.receiveShadow=true;ship.add(hm);
-    // ribs showing through the broken side, a keel beam and gunwale rails
-    const dark=lam(0x4a3522),mid=lam(0x6a4a30);
-    for(let i=1;i<N-1;i+=2){const t=i/N;if(t<.38||t>.78)continue;for(let k=0;k<K-1;k++){const p0=innerR[i][k],p1=innerR[i][k+1],d=p1.clone().sub(p0),len=d.length();
-      const m=add(ship,new THREE.BoxGeometry(.13,.13,len+.05),dark,(p0.x+p1.x)/2,(p0.y+p1.y)/2,(p0.z+p1.z)/2);m.lookAt(ship.localToWorld(p1.clone()));m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.clone().normalize())}}
-    add(ship,new THREE.BoxGeometry(.28,.3,L*.9),dark,0,-.02,0);
-    // deck planks over the stern and a stern cabin with a broken roof
-    for(let i=0;i<5;i++)add(ship,new THREE.BoxGeometry(2.5-i*.05,.1,.8),mid,0,1.05,-L/2+.8+i*.95,0,0,(rand()-.5)*.08);
-    add(ship,new THREE.BoxGeometry(.18,1.6,2.8),mid,-1.55,1.9,-3.7);add(ship,new THREE.BoxGeometry(.18,1.3,2.8),mid,1.55,1.75,-3.7,0,0,.06);add(ship,new THREE.BoxGeometry(3.2,1.7,.18),mid,0,1.9,-5.1);
-    for(let i=0;i<3;i++)add(ship,new THREE.BoxGeometry(3.4,.1,.8),dark,(rand()-.5)*.6,2.78+i*.02,-4.7+i*1.1,0,0,.12);
-    add(ship,new THREE.BoxGeometry(.7,.9,.5),lam(0x5aa0c8,{emissive:0x153a55}),0,2.1,-5.2); // cabin window
-    // mast stump, boom and a torn sail
-    add(ship,new THREE.CylinderGeometry(.16,.24,5.6,7),mid,.1,3.5,.9,.08,0,.3);
-    add(ship,new THREE.CylinderGeometry(.08,.1,4.2,6),mid,1.7,5.3,.5,0,0,Math.PI/2-.2);
-    {const sg=new THREE.PlaneGeometry(3,3.4,5,6),sp=sg.attributes.position;for(let i=0;i<sp.count;i++){const yy=sp.getY(i);sp.setZ(i,Math.sin(sp.getX(i)*2+yy)*.25+(rand()-.5)*.1);if(yy<-.6&&rand()<.55)sp.setY(i,yy+rand()*1.1)}sg.computeVertexNormals();
-     add(ship,sg,lam(0xe6dcc2,{side:THREE.DoubleSide}),.5,4.3,.6,.0,Math.PI/2-.2,.1)}
-    // props: barrels, a chest, an anchor, a rudder, rope coil
-    for(const [bx,bz,s] of [[.7,-1.4,1],[-.4,-2.4,.9]]){add(ship,new THREE.CylinderGeometry(.4*s,.34*s,.85*s,9),lam(0x8a5a30),bx,.55+.43*s,bz);for(const yy of [.25,.7])add(ship,new THREE.CylinderGeometry(.42*s,.42*s,.07,9),lam(0x3a3a40),bx,.55+yy*s,bz)}
-    add(ship,new THREE.BoxGeometry(1,.6,.7),lam(0x7a4a28),.2,.7,2.3,0,.3,0);add(ship,new THREE.BoxGeometry(1.05,.18,.75),lam(0x5a3a20),.2,1.08,2.3,0,.3,0);add(ship,new THREE.BoxGeometry(.2,.2,.1),lam(0xe0b030),.2,.95,2.64,0,.3,0);
-    {const an=new THREE.Group();add(an,new THREE.CylinderGeometry(.07,.07,1.6,6),lam(0x3a3a40),0,0,0);add(an,new THREE.TorusGeometry(.55,.07,5,10,Math.PI),lam(0x3a3a40),0,-.8,0,0,0,Math.PI);add(an,new THREE.BoxGeometry(.7,.1,.1),lam(0x3a3a40),0,.6,0);an.position.set(2.6,.5,3.8);an.rotation.set(.2,.4,1.1);g.add(an)}
-    add(ship,new THREE.BoxGeometry(.12,1.8,1.1),mid,0,.6,-L/2-.3,0,0,.15);
+    // ribs (frames) - these stay where the planks are missing so the damage reads clearly
+    for(let i=1;i<ST;i++){const t=i/ST;for(const side of [-1,1]){
+      const top=(side===1&&t>.3&&t<.74)?(t>.45&&t<.6?.32:.6):1;
+      for(let k=0;k<SK*top;k++){const p0=pt(t,k/SK,side),p1=pt(t,Math.min(top,(k+1)/SK),side),d=p1.clone().sub(p0),len=d.length();if(len<.05)continue;
+        const m=add(ship,new THREE.BoxGeometry(.16,len+.05,.16),dark,(p0.x+p1.x)/2*.93,(p0.y+p1.y)/2+.02,(p0.z+p1.z)/2);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize())}}}
+    // gunwale rails along intact stretches
+    for(const side of [-1,1]){let run=null;const flush=()=>{if(!run)return;const p0=pt(run[0],1,side),p1=pt(run[1],1,side),d=p1.clone().sub(p0);const m=add(ship,new THREE.BoxGeometry(.2,.16,d.length()),mid,(p0.x+p1.x)/2,(p0.y+p1.y)/2+.04,(p0.z+p1.z)/2);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.normalize());run=null};
+      for(let i=0;i<ST;i++){const t0=i/ST,t1=(i+1)/ST,tm=(t0+t1)/2,ok=!(side===1&&tm>.3&&tm<.8)&&!(tm>.88)&&!(tm<.05);if(ok){if(run)run[1]=t1;else run=[t0,t1]}else flush()}flush()}
+    // cross beams and a stern deck with planks
+    for(const t of [.25,.4,.58,.74]){const w=W(t)*.85,h=Hh(t)*.78;add(ship,new THREE.BoxGeometry(w*2,.16,.2),mid,0,h,(t-.5)*L)}
+    for(let i=0;i<6;i++)add(ship,new THREE.BoxGeometry(2.7-i*.02,.1,.82),woods[i%4],0,1.18,-L/2+.55+i*.9,0,0,(rand()-.5)*.03);
+    // stern cabin: back wall, one side wall, half a roof and a window
+    add(ship,new THREE.BoxGeometry(3.4,1.7,.18),mid,0,2.05,-L/2+.3);
+    add(ship,new THREE.BoxGeometry(.18,1.6,2.6),mid,-1.55,2.0,-L/2+1.6);
+    add(ship,new THREE.BoxGeometry(.18,.9,2.0),mid,1.55,1.65,-L/2+1.4,0,0,.07);
+    for(let i=0;i<2;i++)add(ship,new THREE.BoxGeometry(1.8,.12,.9),dark,-.8,2.9,-L/2+.8+i*1.0,0,0,.08);
+    add(ship,new THREE.BoxGeometry(.8,.7,.1),lam(0x5aa0c8,{emissive:0x153a55}),0,2.2,-L/2+.2);
+    // mast stump leaning, with a boom and a torn sail hanging from it
+    add(ship,new THREE.CylinderGeometry(.2,.28,5.4,7),mid,.1,3.3,.8,.1,0,.28);
+    add(ship,new THREE.CylinderGeometry(.09,.11,4.0,6),dark,1.2,5.1,.7,0,0,Math.PI/2-.22);
+    {const sg=new THREE.PlaneGeometry(3.2,3.4,6,7),sp=sg.attributes.position;for(let i=0;i<sp.count;i++){const yy=sp.getY(i),xx=sp.getX(i);sp.setZ(i,Math.sin(xx*1.6+yy*1.2)*.22);if(yy<-.5)sp.setY(i,yy+(.5+.5*Math.sin(xx*3.1))*Math.min(1.2,(-.5-yy)*.9+rand()*.3))}sg.computeVertexNormals();
+      add(ship,sg,lam(0xe6dcc2,{side:THREE.DoubleSide}),.3,3.4,.75,0,Math.PI/2-.05,.05)}
+    // props: barrels, chest, rope coil, broken planks on the sand, anchor
+    for(const [bx,bz,s] of [[.7,-.8,1],[-.5,-1.9,.9],[.4,1.6,.85]]){add(ship,new THREE.CylinderGeometry(.4*s,.34*s,.85*s,9),lam(0x8a5a30),bx,.7+.43*s,bz);for(const yy of [.22,.62])add(ship,new THREE.CylinderGeometry(.42*s,.42*s,.07,9),iron,bx,.7+yy*s,bz)}
+    add(ship,new THREE.BoxGeometry(1,.55,.7),lam(0x7a4a28),-.4,.95,2.5,0,.3,0);add(ship,new THREE.BoxGeometry(1.05,.16,.75),lam(0x5a3a20),-.4,1.3,2.5,0,.3,0);add(ship,new THREE.BoxGeometry(.2,.2,.1),lam(0xe0b030),-.4,1.2,2.86,0,.3,0);
+    add(ship,new THREE.TorusGeometry(.45,.12,5,10),lam(0xb89a5a),-.2,.78,-3.2,Math.PI/2,0,0);
+    {const an=new THREE.Group();add(an,new THREE.CylinderGeometry(.07,.07,1.6,6),iron,0,0,0);add(an,new THREE.TorusGeometry(.55,.07,5,10,Math.PI),iron,0,-.8,0,0,0,Math.PI);add(an,new THREE.BoxGeometry(.7,.1,.1),iron,0,.6,0);an.position.set(3.3,.45,2.8);an.rotation.set(.2,.4,1.2);g.add(an)}
+    for(const [px,pz,pr,pl] of [[3.2,-.8,.4,2.2],[2.6,.6,-.9,1.7],[-3.0,-2.4,.2,2.0]])add(g,new THREE.BoxGeometry(.3,.1,pl),woods[1],px,.35,pz,0,pr,.12);
     // sand piled against the hull
-    for(let i=0;i<7;i++){const sa=i/7*6.28,m=add(g,new THREE.IcosahedronGeometry(1.8,1),lam(0xdcc98f),Math.cos(sa)*2.6,.1,Math.sin(sa)*5.5,0,0,0,1,.35,1,false)}
+    for(let i=0;i<8;i++){const sa=i/8*6.28,m=add(g,new THREE.IcosahedronGeometry(1.6,1),lam(0xdcc98f),Math.cos(sa)*2.7,.0,Math.sin(sa)*6.0,0,0,0,1,.3,1,false)}
     this.blockers.push({x,z,r:2.4,oval:{a:g.rotation.y,hl:4.8,hw:1.8}});this.add("Shipwreck",x,z,y);
     const spots=[[0,0.5],[-.8,-1.5],[.5,2.6],[.2,-3.6],[1.2,-.6],[-1,1.8]];
     spots.forEach(([lx,lz],i)=>{const c=Math.cos(g.rotation.y),s=Math.sin(g.rotation.y),wx=x+lx*c+lz*s,wz=z-lx*s+lz*c;this.pickups.addFixed(["bottle","coin","pearl","bottle","coin","shell"][i],wx,Math.max(y,heightAt(wx,wz))+.12,wz,240)});
