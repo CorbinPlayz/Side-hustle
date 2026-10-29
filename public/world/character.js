@@ -28,61 +28,66 @@ function add(parent,geo,m,x=0,y=0,z=0,rx=0,ry=0,rz=0,sx=1,sy=1,sz=1){const o=new
 const cyl=(a,b,h,s=7)=>new THREE.CylinderGeometry(a,b,h,s);
 const ico=(r,d=1)=>new THREE.IcosahedronGeometry(r,d);
 export function defaultLook(i=0){return {skin:i%SKINS.length,hair:i%6,hairColor:(i*3)%HAIR_COLORS.length,hat:0,teeth:(i%3)+1,top:0,topColor:i%TOP_COLORS.length,bottom:i%2,bottomColor:i%BOTTOM_COLORS.length,eyes:0}}
-/** look: player options as indices. npc: a key of NPC_OUTFITS, which overrides clothing. */
+/** look: player options as indices. npc: a key of NPC_OUTFITS, which overrides clothing.
+ *  Chunky, friendly proportions: big round head, simple dot eyes, rosy cheeks, short thick limbs. Feet at y=0, about 1.95 tall. */
 export function makeCharacter(look,npc){
   const L={...defaultLook(0),...look},o=npc?NPC_OUTFITS[npc]:null;
   const skin=M(SKINS[L.skin%SKINS.length],{roughness:.9}),hair=M(HAIR_COLORS[L.hairColor%HAIR_COLORS.length]);
   const topC=o?o.top:TOP_COLORS[L.topColor%TOP_COLORS.length],botC=o?o.bottom:BOTTOM_COLORS[L.bottomColor%BOTTOM_COLORS.length];
-  const top=M(topC),bot=M(botC),shoe=M(0x3a2a22),white=M(0xffffff,{roughness:.4}),dark=M(0x16181d);
+  const top=M(topC),bot=M(botC),shoe=M(0x3a2a22),sole=M(0xe8e0d0),white=M(0xffffff,{roughness:.4}),dark=M(0x1a1620),mouthC=M(0x8a3a3a),blush=M(0xf08a8a);
   const g=new THREE.Group(),body=new THREE.Group();g.add(body);
-  // legs (hips at y .92)
-  const mk=(side)=>{const leg=new THREE.Group();leg.position.set(side*.12,.92,0);
-    const shorts=!o&&L.bottom===1;
-    add(leg,cyl(.095,.075,.86,7),shorts?skin:bot,0,-.43,0);
-    if(shorts)add(leg,cyl(.11,.105,.36,7),bot,0,-.17,0);
-    add(leg,ico(.1,0),shoe,0,-.88,.07,0,0,0,1.1,.65,1.8);
+  const shorts=!o&&L.bottom===1,tank=!o&&L.top===1,hood=!o&&L.top===2;
+  // legs: short and thick, hip pivot at y .66
+  const mk=side=>{const leg=new THREE.Group();leg.position.set(side*.13,.66,0);
+    add(leg,cyl(.115,.1,.6,8),shorts?skin:bot,0,-.3,0);
+    if(shorts)add(leg,cyl(.135,.13,.3,8),bot,0,-.15,0);
+    add(leg,ico(.125,1),shoe,0,-.6,.05,0,0,0,1.02,.68,1.55);
+    add(leg,new THREE.BoxGeometry(.2,.03,.3),sole,0,-.655,.06);
     body.add(leg);return leg};
   const legL=mk(-1),legR=mk(1);
-  // torso and neck
-  const hood=!o&&L.top===2;
-  add(body,cyl(.235,.165,.64,8),top,0,1.22,0,0,0,0,1,1,1.3);
-  if(!o&&L.top===1){add(body,cyl(.205,.15,.1,8),skin,0,1.5,0)} // tank top shows shoulders
-  if(hood)add(body,ico(.17,0),top,0,1.52,-.12,0,0,0,1,.8,.8);
-  add(body,cyl(.065,.08,.2,7),skin,0,1.6,0);
-  if(o&&o.apron){add(body,new THREE.BoxGeometry(.32,.5,.04),M(o.apron),0,1.12,.15);add(body,new THREE.BoxGeometry(.05,.3,.03),M(o.apron),-.1,1.46,.14,0,0,.2);add(body,new THREE.BoxGeometry(.05,.3,.03),M(o.apron),.1,1.46,.14,0,0,-.2)}
-  if(o&&o.overalls){const oc=M(o.overalls);add(body,new THREE.BoxGeometry(.3,.26,.04),oc,0,1.3,.16);add(body,cyl(.19,.15,.3,8),oc,0,.98,0);for(const s of [-1,1])add(body,new THREE.BoxGeometry(.05,.3,.03),oc,s*.1,1.43,.14,.12,0,s*.18)}
-  if(o&&o.vest)add(body,cyl(.21,.16,.4,8),M(o.vest),0,1.28,0,0,0,0,1.02,1,1.05);
-  if(o&&o.stripes)for(let i=0;i<3;i++)add(body,cyl(.2-i*.012,.2-i*.012,.04,8),M(o.stripes),0,1.12+i*.14,0);
-  // arms
-  const arm=(side)=>{const a=new THREE.Group();a.position.set(side*.3,1.46,0);
-    add(a,cyl(.07,.058,.4,7),(!o&&L.top===1)?skin:top,0,-.2,0);add(a,cyl(.056,.05,.32,7),skin,0,-.5,0);add(a,ico(.085,1),skin,0,-.72,.01,0,0,0,1,1.1,.85);add(a,ico(.04,0),skin,.0,-.71,.07,0,0,0,.8,1.2,.8); // mitten and thumb
-    add(a,ico(.09,1),(!o&&L.top===1)?skin:top,0,-.01,0); // round shoulder
+  // torso: one rounded capsule, with a short neck
+  add(body,new THREE.CapsuleGeometry(.235,.22,3,9),top,0,.98,0,0,0,0,1,1,.86);
+  add(body,cyl(.1,.11,.12,8),skin,0,1.3,0);
+  if(tank)add(body,cyl(.215,.2,.1,9),skin,0,1.27,0,0,0,0,1,1,.86);
+  if(hood){add(body,ico(.2,1),top,0,1.3,-.14,0,0,0,1,.75,.7);add(body,new THREE.BoxGeometry(.26,.12,.05),top,0,.8,.2);for(const s of [-1,1])add(body,new THREE.BoxGeometry(.018,.16,.018),white,s*.05,1.18,.2)}
+  if(o&&o.apron){add(body,new THREE.BoxGeometry(.36,.5,.05),M(o.apron),0,.93,.2);for(const s of [-1,1])add(body,new THREE.BoxGeometry(.05,.3,.03),M(o.apron),s*.1,1.2,.19,0,0,s*.15)}
+  if(o&&o.overalls){const oc=M(o.overalls);add(body,new THREE.BoxGeometry(.32,.28,.05),oc,0,1.08,.2);add(body,cyl(.24,.2,.3,9),oc,0,.78,0,0,0,0,1,1,.88);for(const s of [-1,1])add(body,new THREE.BoxGeometry(.05,.34,.04),oc,s*.1,1.2,.18,.1,0,s*.16)}
+  if(o&&o.vest)add(body,cyl(.24,.2,.44,9),M(o.vest),0,1.02,0,0,0,0,1.02,1,.9);
+  if(o&&o.stripes)for(let i=0;i<3;i++)add(body,cyl(.238,.238,.05,9),M(o.stripes),0,.84+i*.15,0,0,0,0,1,1,.86);
+  // arms: sleeve, forearm, round mitten
+  const arm=side=>{const a=new THREE.Group();a.position.set(side*.31,1.2,0);
+    add(a,cyl(.088,.078,.3,8),tank?skin:top,0,-.15,0);add(a,cyl(.07,.064,.26,8),skin,0,-.4,0);add(a,ico(.1,1),skin,0,-.57,.01);
+    add(a,ico(.1,1),tank?skin:top,0,-.01,0);
     body.add(a);return a};
   const armL=arm(-1),armR=arm(1);
-  // head: big, a little squashed, with a jaw
-  const head=new THREE.Group();head.position.set(0,1.98,0);head.scale.setScalar(1.32);body.add(head);
-  add(head,ico(.25,1),skin,0,0,0,0,0,0,1,1.08,.98);
-  add(head,ico(.15,1),skin,0,-.13,.07,0,0,0,1.05,.8,.95); // jaw
-  for(const s of [-1,1])add(head,ico(.06,0),skin,s*.25,-.01,0,0,0,0,.5,1,1); // ears
-  // eyes: big white globes with pupils, brows
-  const es=L.eyes,ey=es===2?.04:.05,er=es===3?.092:es===1?.085:.075;
+  // head: big and round, no jaw
+  const head=new THREE.Group();head.position.set(0,1.62,0);head.scale.setScalar(1.32);body.add(head);
+  add(head,ico(.25,2),skin,0,0,0,0,0,0,1,1.03,1);
+  for(const s of [-1,1])add(head,ico(.05,0),skin,s*.245,-.01,0,0,0,0,.55,1,1); // ears
+  add(head,ico(.034,1),skin,0,-.02,.247,0,0,0,1,.85,.9); // little nose
+  for(const s of [-1,1])add(head,cyl(.045,.045,.012,8),blush,s*.145,-.07,.2,Math.PI/2-.35,s*.5,0); // rosy cheeks
+  // eyes
+  const es=L.eyes,ex=.092,ey=.04;
   for(const s of [-1,1]){
-    add(head,ico(er,1),white,s*.095,ey,.185);
-    const px=es===1?s*.098+(s>0?-.02:.02):s*.098,py=es===1?ey-.02:ey;
-    add(head,ico(es===3?.03:.04,0),dark,px,py,.185+er*.86);
-    if(es===2)add(head,new THREE.BoxGeometry(.17,.05,.1),skin,s*.095,ey+.045,.215); // heavy eyelids
-    add(head,new THREE.BoxGeometry(.1,.025,.03),hair,s*.095,ey+er+.03,.22,0,0,s*(es===3?-.1:.18));
+    if(es===1){ // googly: big white eyes with wandering pupils
+      add(head,ico(.075,1),white,s*ex,ey+.01,.19);add(head,ico(.036,1),dark,s*ex+(s>0?-.012:.012),ey-.005,.255);
+    }else if(es===2){ // sleepy: half-closed
+      add(head,ico(.04,1),dark,s*ex,ey-.012,.222,0,0,0,.95,.55,.6);add(head,new THREE.BoxGeometry(.1,.035,.03),skin,s*ex,ey+.012,.232);
+    }else{ // normal / wide
+      const w=es===3?1.3:1;add(head,ico(.042*w,1),dark,s*ex,ey,.222,0,0,0,.8,1.3,.65);add(head,ico(.013*w,0),white,s*ex+.011,ey+.026*w,.248);if(es===3)add(head,ico(.007,0),white,s*ex-.012,ey-.018,.249);
+    }
+    add(head,new THREE.BoxGeometry(.09,.022,.025),hair,s*ex,ey+(es===1?.105:es===3?.1:.085),.225,0,0,s*(es===2?-.08:.1)); // brows
   }
-  add(head,cyl(.0,.05,.1,5),skin,0,-.03,.26,Math.PI/2.2,0,0); // nose
-  // mouth and teeth
-  const my=-.12;add(head,new THREE.BoxGeometry(.19,L.teeth===2?.075:.05,.03),M(0x4a1f1f),0,my,.222);
-  if(L.teeth===1){for(const s of [-1,1])add(head,new THREE.BoxGeometry(.045,.085,.025),white,s*.026,my-.045,.235)}
-  else if(L.teeth===2){add(head,new THREE.BoxGeometry(.15,.04,.03),white,0,my+.012,.24);add(head,new THREE.BoxGeometry(.15,.035,.03),white,0,my-.02,.24)}
-  else if(L.teeth===3){for(const s of [-1,1])add(head,new THREE.BoxGeometry(.04,.05,.025),white,s*.05,my-.03,.236)}
+  // mouth: a smile arc, an open grin or buck teeth
+  const smile=(r,y)=>add(head,new THREE.TorusGeometry(r,.009,4,9,Math.PI),mouthC,0,y,.238,0,0,Math.PI);
+  if(L.teeth===2){add(head,cyl(.085,.085,.02,10),mouthC,0,-.108,.226,Math.PI/2,0,0,1,1,.62);add(head,new THREE.BoxGeometry(.13,.028,.02),white,0,-.082,.238)}
+  else smile(.06,-.075);
+  if(L.teeth===1)for(const s of [-1,1])add(head,new THREE.BoxGeometry(.036,.06,.02),white,s*.019,-.128,.24);
+  if(L.teeth===3)for(const s of [-1,1])add(head,new THREE.BoxGeometry(.034,.055,.02),white,s*.045,-.123,.238);
   // hair
   const hs=o?-1:L.hair;
   if(hs>=0&&hs!==4){
-    add(head,new THREE.SphereGeometry(.275,9,6,0,Math.PI*2,0,Math.PI*.4),hair,0,.04,-.02,0,0,0,1,1.05,1.02);
+    add(head,new THREE.SphereGeometry(.272,10,7,0,Math.PI*2,0,Math.PI*.5),hair,0,.03,-.03,-.45,0,0,1,1.03,1.02);
     if(hs===1)for(let i=0;i<7;i++){const a=i/7*Math.PI*2;add(head,cyl(0,.05,.2,5),hair,Math.cos(a)*.15,.27,Math.sin(a)*.15,Math.sin(a)*.5,0,-Math.cos(a)*.5)}
     if(hs===2){add(head,cyl(.2,.13,.55,6),hair,0,-.2,-.16);}
     if(hs===3)for(let i=0;i<6;i++)add(head,cyl(0,.05,.22,5),hair,0,.27-Math.abs(i-2.5)*.03,-.17+i*.07,0,0,0);
