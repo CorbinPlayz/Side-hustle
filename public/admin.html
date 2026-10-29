@@ -9,7 +9,7 @@
 </head><body class="fx">
 <header class="topbar"><div class="wrap">
   <a class="brand" href="index.html"><i></i>side<span>/</span>hustle</a>
-  <nav class="nav" aria-label="Sections"><a href="index.html#arsenal">arsenal</a><a href="leaderboard.html">leaderboard</a><a href="play.html">play</a></nav>
+  <nav class="nav" aria-label="Sections"><a href="index.html">home</a><a href="world.html">play</a></nav>
   <span class="spacer"></span>
   <span class="nav-user" id="navUser"></span>
 </div></header>
@@ -17,6 +17,9 @@
   <div class="eyebrow">Admin panel</div>
   <h1><span class="shimmer">Who can play</span></h1>
   <p class="lead">Approve new accounts, block anyone you do not want on the site. Changes apply the next time that player loads the game.</p>
+  <div class="card-form" id="arenas" style="max-width:none;margin:0 0 22px"><h2 style="font-size:18px;margin-bottom:6px">Dual Arenas</h2>
+   <p class="lead" style="margin:0 0 12px;font-size:14px">The old shooter (play, leaderboard) is hidden from the site. Enter the arenas code to switch it back on or off.</p>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span id="arState" class="tag">checking...</span><input id="arCode" type="password" inputmode="numeric" autocomplete="off" placeholder="arenas code" aria-label="Arenas code" style="max-width:180px"><button class="btn" id="arToggle" type="button">Switch</button><span id="arMsg" class="form-msg"></span></div></div>
   <div id="body"></div>
 </div></main>
 <script src="js/data.js"></script>
@@ -57,6 +60,13 @@ function list(){
  });
 }
 function load(){Backend.admin.list().then(function(r){users=r;build()}).catch(function(e){show('<div class="empty">'+Site.esc(e.message)+"</div>")})}
+var arOn=false;
+function arPaint(){$("arState").textContent=arOn?"Dual Arenas: ON":"Dual Arenas: hidden";$("arToggle").textContent=arOn?"Hide it":"Turn it on"}
+function arLoad(){fetch("/api/arenas",{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(j){arOn=!!j.on;arPaint()}).catch(function(){$("arenas").hidden=true})}
+$("arToggle").onclick=function(){var m=$("arMsg");m.className="form-msg";m.textContent="";
+ var hdr={"Content-Type":"application/json"};try{var k=sessionStorage.getItem("sh.adminkey");if(k)hdr["X-Admin-Key"]=k}catch(e){}
+ fetch("/api/admin/arenas",{method:"POST",credentials:"same-origin",headers:hdr,body:JSON.stringify({on:!arOn,code:$("arCode").value})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Failed");return j})}).then(function(j){arOn=!!j.on;arPaint();$("arCode").value="";m.className="form-msg ok";m.textContent=arOn?"Dual Arenas is back on.":"Dual Arenas hidden."}).catch(function(e){m.textContent=e.message})};
+arLoad();
 Site.nav().then(function(r){
  if(r.state==="demo"){show('<div class="demo-note">Demo mode: there is no backend, so there is nobody to manage. Deploy the Worker to turn the admin panel on (see README.md).</div>');return}
  if(!r.profile||r.state!=="ok"||!r.profile.is_admin){show('<div class="card-form"><div class="gate blocked"><div class="ring"></div><h2>Admins only</h2><p>'+(r.profile?"This account is not an admin.":"Sign in with an admin account.")+'</p><a class="btn" href="login.html?next=admin.html">Sign in</a></div></div>');return}

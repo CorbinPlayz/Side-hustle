@@ -31,9 +31,21 @@ export class HubCore{
       xp INTEGER NOT NULL DEFAULT 0, wins INTEGER NOT NULL DEFAULT 0, losses INTEGER NOT NULL DEFAULT 0,
       kills INTEGER NOT NULL DEFAULT 0, deaths INTEGER NOT NULL DEFAULT 0, loadout TEXT NOT NULL DEFAULT '[]', created_at INTEGER NOT NULL)`);
     db.run(`CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL, expires INTEGER NOT NULL)`);
+    db.run(`CREATE TABLE IF NOT EXISTS settings(k TEXT PRIMARY KEY, v TEXT NOT NULL)`);
     db.run(`CREATE TABLE IF NOT EXISTS attempts(name TEXT PRIMARY KEY, n INTEGER NOT NULL, first INTEGER NOT NULL)`);
   }
   now(){return Date.now()}
+  /** Site-wide switches the admin can flip (stored in the Hub's database). */
+  getSetting(k,def=""){const r=this.db.all("SELECT v FROM settings WHERE k=?",k);return r.length?r[0].v:def}
+  arenasOn(){return this.getSetting("arenas","0")==="1"}
+  /** Dual Arenas (the old shooter pages) are hidden unless an admin turns them on with the arenas code. */
+  adminSetArenas(actor,on,code){
+    this.requireAdmin(actor);
+    const want=String(this.opts.arenasCode||"10242010");
+    if(String(code||"")!==want)throw new HubError("Wrong code.",403);
+    this.db.run("INSERT INTO settings(k,v) VALUES('arenas',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v",on?"1":"0");
+    return {on:!!on};
+  }
 
   profile(u){
     if(!u)return null;

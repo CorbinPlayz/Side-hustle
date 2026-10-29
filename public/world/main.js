@@ -104,6 +104,14 @@ const SHOTS={
 };
 const spawnAt=()=>{if(eco.myPlot!=null){const p=town.plots.find(q=>q.id===eco.myPlot),bed=eco.pieces.find(q=>q.t==="bed");if(p&&bed)return {x:p.x+bed.x+.9,z:p.z+bed.z,why:"your bed"};if(p)return {x:p.x,z:p.z+(PLOT/2)+2.5,why:"your house"}}return {x:dockPos.x+Math.cos(dockA)*(DOCK_LEN*.9),z:dockPos.z+Math.sin(dockA)*(DOCK_LEN*.9),why:"the dock"}};
 const player={jy:0,vy:0,sprint:false,shiftDown:0,x:dockPos.x+Math.cos(dockA)*(DOCK_LEN*.9),z:dockPos.z+Math.sin(dockA)*(DOCK_LEN*.9),yaw:Math.atan2(-Math.cos(dockA),-Math.sin(dockA)),pitch:-.28,y:0};
+/* resume where you left off: the last position is saved a few times a second and checked for safety before use */
+const POS_KEY="sidehustle.pos";
+{try{const q=JSON.parse(localStorage.getItem(POS_KEY)||"null");
+  if(q&&[q.x,q.z,q.yaw].every(Number.isFinite)&&Math.abs(q.x)<(WORLD.size||600)/2&&Math.abs(q.z)<(WORLD.size||600)/2&&eco.loaded&&!q.dead){
+    const h=heightAt(q.x,q.z);
+    if(h>.5&&!inLava(q.x,q.z)&&!solid.blocked(q.x,q.z,.5)){player.x=q.x;player.z=q.z;player.yaw=q.yaw;player.pitch=Math.max(-1.2,Math.min(1.2,q.pitch||0))}
+  }}catch(e){}}
+const savePos=()=>{try{if(!player.dead)localStorage.setItem(POS_KEY,JSON.stringify({x:+player.x.toFixed(2),z:+player.z.toFixed(2),yaw:+player.yaw.toFixed(3),pitch:+player.pitch.toFixed(3),t:Date.now()}))}catch(e){}};
 function placeSun(c){
   sun.position.copy(c).addScaledVector(SUN_DIR,260);sun.target.position.copy(c);sun.target.updateMatrixWorld();
 }
@@ -285,6 +293,8 @@ window.__ready=true;window.__H=heightAt;window.__R={p:ravPoint};window.__dev={ha
   advance(sec){for(let i=0;i<sec*30;i++){camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0,"YXZ");camera.updateMatrixWorld(true);fishing.update(1/30);jobs.update(1/30,player.x,player.z);pickups.update(1/30,player.x,player.z);town.update(1/30);poi.update(1/30);fx.pixels.update(1/30);fx.rings.update(1/30)}}};
 
 // autosave: every 8 seconds, when the tab is hidden, and when it closes
-setInterval(()=>{if(eco.save())hud.saved()},8000);
-addEventListener("beforeunload",()=>eco.save());
-document.addEventListener("visibilitychange",()=>{if(document.hidden)eco.save()});
+setInterval(savePos,1000);
+setInterval(()=>{if(eco.save())hud.saved()},3000);
+addEventListener("beforeunload",()=>{savePos();eco.save()});
+addEventListener("pagehide",()=>{savePos();eco.save()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){savePos();eco.save()}});

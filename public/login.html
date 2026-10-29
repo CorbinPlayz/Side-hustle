@@ -9,7 +9,7 @@
 </head><body class="fx">
 <header class="topbar"><div class="wrap">
   <a class="brand" href="index.html"><i></i>side<span>/</span>hustle</a>
-  <nav class="nav" aria-label="Sections"><a href="index.html#arsenal">arsenal</a><a href="leaderboard.html">leaderboard</a><a href="play.html">play</a></nav>
+  <nav class="nav" aria-label="Sections"><a href="index.html">home</a><a href="world.html">play</a></nav>
   <span class="spacer"></span>
   <span class="nav-user" id="navUser"></span>
 </div></header>
@@ -35,8 +35,8 @@
 <script src="js/site.js"></script>
 <script>
 (function(){
-var $=function(i){return document.getElementById(i)},up=false,next=new URLSearchParams(location.search).get("next")||"world.html";
-next=String(next).replace(/^\//,"");if(!/^[a-z0-9_\-]+\.html(\?[A-Za-z0-9=&_\-]*)?$/i.test(next))next="world.html";
+var $=function(i){return document.getElementById(i)},up=false,next=new URLSearchParams(location.search).get("next")||"index.html";
+next=String(next).replace(/^\//,"");if(!/^[a-z0-9_\-]+\.html(\?[A-Za-z0-9=&_\-]*)?$/i.test(next))next="index.html";
 function mode(u){up=u;$("tabIn").setAttribute("aria-selected",!u);$("tabUp").setAttribute("aria-selected",u);$("fCode").hidden=!u;$("go").textContent=u?"Create account":"Sign in";$("password").autocomplete=u?"new-password":"current-password";$("msg").textContent=""}
 $("tabIn").onclick=function(){mode(false)};$("tabUp").onclick=function(){mode(true)};
 function gate(state){
@@ -47,8 +47,8 @@ function gate(state){
 }
 var poll=null;
 function route(r){
- if(r.state==="ok"){location.replace(next==="index.html"?"world.html":next);return}
- if(r.state==="pending"||r.state==="blocked"){gate(r.state);clearInterval(poll);if(r.state==="pending")poll=setInterval(function(){Backend.refresh().then(function(x){if(x.state==="ok")location.replace(next==="index.html"?"world.html":next);else if(x.state==="blocked"){gate("blocked");clearInterval(poll)}})},5000)}
+ if(r.state==="ok"){location.replace(next);return}
+ if(r.state==="pending"||r.state==="blocked"){gate(r.state);clearInterval(poll);if(r.state==="pending")poll=setInterval(function(){Backend.refresh().then(function(x){if(x.state==="ok")location.replace(next);else if(x.state==="blocked"){gate("blocked");clearInterval(poll)}})},5000)}
 }
 Site.nav().then(function(r){
  if(r.state==="demo"){$("formCard").hidden=true;$("demoNote").hidden=false;return}

@@ -19,6 +19,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Hide Dual Arenas from the static site (the files stay in the repo; the Worker serves them only when an admin turns them on)
+        run: |
+          rm -f public/play.html public/leaderboard.html public/shooter-old.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public

@@ -35,7 +35,7 @@ export class Hub extends DurableObject{
     this.core=new HubCore({
       all:(q,...p)=>sql.exec(q,...p).toArray(),
       run:(q,...p)=>{sql.exec(q,...p)}
-    },{adminId:parseInt(env.ADMIN_ID,10)||0,signupCode:env.SIGNUP_CODE||""});
+    },{adminId:parseInt(env.ADMIN_ID,10)||0,signupCode:env.SIGNUP_CODE||"",arenasCode:env.ARENAS_CODE||"10242010"});
   }
   async invoke(method,args){
     try{return {ok:true,data:await this.core[method](...args)}}
@@ -125,16 +125,23 @@ export default {
       if(!me)return json({error:"Sign in first."},401);
       if(me.status!=="approved"&&!path.startsWith("/api/admin"))return json({error:"Your account is not approved."},403);
       if(path==="/api/loadout"&&request.method==="POST"){const b=await readJson(request);return reply(await hub(env,"saveLoadout",me.id,b.loadout))}
-      if(path==="/api/leaderboard"){return reply(await hub(env,"leaderboard",url.searchParams.get("sort"),parseInt(url.searchParams.get("limit"),10)||50))}
+      if(path==="/api/arenas"){return reply(await hub(env,"arenasOn").then(r=>r.ok?{ok:true,data:{on:!!r.data}}:r))}
+      if(path==="/api/leaderboard"){if(!(await hub(env,"arenasOn")).data)return json({error:"Not found."},404);return reply(await hub(env,"leaderboard",url.searchParams.get("sort"),parseInt(url.searchParams.get("limit"),10)||50))}
       if(path.startsWith("/api/admin")&&env.ADMIN_KEY){
         const k=request.headers.get("X-Admin-Key")||"";
         if(!sameKey(k,String(env.ADMIN_KEY)))return json({error:"Admin key needed.",needKey:true},401);
       }
+      if(path==="/api/admin/arenas"&&request.method==="POST"){const b=await readJson(request);return reply(await hub(env,"adminSetArenas",me.id,!!b.on,b.code))}
       if(path==="/api/admin/users"){return reply(await hub(env,"adminList",me.id))}
       if(path==="/api/admin/status"&&request.method==="POST"){const b=await readJson(request);return reply(await hub(env,"adminSetStatus",me.id,b.id|0,b.status))}
       return json({error:"Not found."},404);
     }
 
+    const ARENA_PAGES=new Set(["/play.html","/play","/leaderboard.html","/leaderboard","/shooter-old.html"]);
+    if(ARENA_PAGES.has(path)||(path.startsWith("/ws/")&&!path.startsWith("/ws/world/"))){
+      const a=await hub(env,"arenasOn");
+      if(!a.ok||!a.data)return new Response("Not found",{status:404,headers:SECURITY});
+    }
     if(path.startsWith("/ws/")){
       if(request.headers.get("Upgrade")!=="websocket")return new Response("Expected a WebSocket",{status:426});
       const o=request.headers.get("Origin");
@@ -156,7 +163,7 @@ export default {
     if(!allowed){
       me=await who();
       if(!me||me.status!=="approved"){
-        const dest="/login.html?next="+encodeURIComponent(path==="/"?"world.html":path.replace(/^\//,"")+url.search);
+        const dest="/login.html?next="+encodeURIComponent(path==="/"?"index.html":path.replace(/^\//,"")+url.search);
         return new Response(null,{status:302,headers:{Location:dest,"Cache-Control":"no-store",...SECURITY}});
       }
       if((path==="/admin.html"||path==="/admin")&&!me.is_admin)return new Response("Not found",{status:404,headers:SECURITY});

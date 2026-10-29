@@ -1,2 +1,323 @@
-<!doctype html><meta charset="utf-8"><title>Side Hustle</title>
-<meta http-equiv="refresh" content="0;url=world.html"><a href="world.html">Play Side Hustle</a>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Side Hustle</title>
+<meta name="description" content="A cozy low-poly island economy for you and up to five friends. Fish, forage, craft, build a home and play the market.">
+<meta name="theme-color" content="#2a2150">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23ff9a4d'/%3E%3Cpath d='M2 22l9-9 6 6 4-4 9 9v4H2z' fill='%23342a63'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap">
+<script type="importmap">{"imports":{"three":"https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js"}}</script>
+<style>
+:root{
+  --ink:#fff6ea;--mut:#dcc7d8;--card:rgba(36,22,58,.72);--card2:rgba(255,255,255,.08);--line:rgba(255,226,190,.22);
+  --sun:#ffb04a;--sun2:#ff7a4d;--teal:#5fd6c4;--bad:#ff7d7d;
+  --disp:"Fredoka","Trebuchet MS",system-ui,sans-serif;--body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#2a2150;color:var(--ink);font:600 16px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+.shade{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(20,10,40,.45) 100%)}
+main{position:relative;z-index:2;min-height:100%;display:flex;flex-direction:column;padding:max(16px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+.top{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.mark{font:700 20px var(--disp);letter-spacing:.3px;display:flex;align-items:center;gap:8px;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+.mark i{width:22px;height:22px;border-radius:50%;background:linear-gradient(#ffd27a,var(--sun2));box-shadow:0 0 14px #ffb04a}
+.acct{display:flex;align-items:center;gap:8px;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 14px;backdrop-filter:blur(8px)}
+.acct a,.acct button{color:var(--ink);font:700 13px var(--body);background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;text-decoration:none;cursor:pointer}
+.acct a:hover,.acct button:hover{background:rgba(255,255,255,.18)}
+.dot{width:8px;height:8px;border-radius:50%;background:#7be08f;box-shadow:0 0 8px #7be08f}
+.dot.off{background:#ffc15a;box-shadow:0 0 8px #ffc15a}
+.hero{flex:1;display:grid;align-content:center;grid-template-columns:minmax(0,520px) minmax(0,420px);gap:28px;align-items:center;justify-content:center;padding:18px 0}
+h1{margin:0;font:700 clamp(54px,8vw,88px)/.9 var(--disp);letter-spacing:-1px;color:#fff3df;text-shadow:0 4px 0 #e0693f,0 8px 0 #a43f4a,0 14px 30px rgba(20,8,40,.55);transform:rotate(-2deg);transform-origin:left bottom}
+h1 span{display:block;color:#ffd27a}
+.tag{margin:18px 0 22px;font-size:19px;max-width:30em;color:#ffeedd;text-shadow:0 2px 10px rgba(20,8,40,.6)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;backdrop-filter:blur(10px);box-shadow:0 18px 50px rgba(15,6,35,.45)}
+.play{display:flex;align-items:center;gap:14px;width:100%;border:0;border-radius:18px;padding:16px 20px;cursor:pointer;color:#3a1608;text-align:left;
+  background:linear-gradient(#ffd27a,var(--sun) 55%,#ff9a3c);box-shadow:0 6px 0 #c4602c,0 14px 28px rgba(255,140,60,.35);transition:transform .08s,box-shadow .08s}
+.play:hover{transform:translateY(-2px);box-shadow:0 8px 0 #c4602c,0 18px 32px rgba(255,140,60,.45)}
+.play:active{transform:translateY(4px);box-shadow:0 2px 0 #c4602c}
+.play b{font:700 30px var(--disp);display:block;line-height:1}
+.play small{font:700 14px var(--body);opacity:.8}
+.play svg{width:40px;height:40px;flex:none}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.btn{font:700 17px var(--disp);color:var(--ink);background:var(--card2);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,transform .08s}
+.btn:hover{background:rgba(255,255,255,.17)}.btn:active{transform:scale(.98)}
+.btn.teal{background:linear-gradient(#6fe3d1,#35b9a6);color:#08322c;border-color:transparent;box-shadow:0 4px 0 #1f7f72}
+.btn.teal:hover{filter:brightness(1.06)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.sub{display:none;margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
+.sub.on{display:block;animation:pop .22s ease}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.code{font:700 44px/1 var(--disp);letter-spacing:.18em;text-align:center;color:#ffe3a3;background:rgba(0,0,0,.28);border:2px dashed rgba(255,214,150,.55);border-radius:14px;padding:12px 6px 12px 16px;user-select:all}
+.hint{font-size:13.5px;color:var(--mut);margin:8px 2px 0}
+.inline{display:flex;gap:8px;margin-top:8px}
+input.codein{flex:1;min-width:0;font:700 28px var(--disp);letter-spacing:.2em;text-transform:uppercase;text-align:center;color:var(--ink);background:rgba(0,0,0,.28);border:2px solid var(--line);border-radius:14px;padding:8px 6px 8px 14px;outline:none}
+input.codein:focus{border-color:var(--sun)}
+.msg{min-height:20px;font-size:14px;color:var(--bad);margin:6px 2px 0}
+.msg.ok{color:#8ff0a6}
+.card h2{margin:0 0 10px;font:600 22px var(--disp);display:flex;justify-content:space-between;align-items:center}
+.who{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center}
+#pv{width:150px;height:210px;border-radius:16px;background:linear-gradient(#ffd9a0,#f59a7a);display:block;border:1px solid var(--line)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.stat b{display:block;font:700 22px/1.1 var(--disp);color:#ffe3a3}
+.stat span{font-size:12.5px;color:var(--mut)}
+.edit{margin-top:10px;width:100%}
+.foot{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;justify-content:space-between;font-size:13px;color:#efd9e4;text-shadow:0 1px 6px rgba(20,8,40,.8)}
+.foot button{background:none;border:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer;padding:0;opacity:.8}
+.keys{display:flex;gap:6px 14px;flex-wrap:wrap}
+kbd{font:700 12px var(--body);background:rgba(255,255,255,.16);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 6px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9;background:rgba(30,16,50,.92);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:700}
+@media (max-width:900px){
+  .hero{grid-template-columns:minmax(0,1fr);gap:18px}
+  h1{transform:none}
+  .tag{margin:12px 0 16px}
+  .who{grid-template-columns:120px 1fr}#pv{width:120px;height:170px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas><div class="shade"></div>
+<main>
+  <div class="top">
+    <div class="mark"><i></i>Side Hustle</div>
+    <div class="acct" id="acct" hidden></div>
+  </div>
+
+  <section class="hero">
+    <div>
+      <h1>Side<span>Hustle</span></h1>
+      <p class="tag">A chill island economy for you and up to five friends. Fish, forage, craft, build a home and play the market.</p>
+      <div class="panel" id="menu">
+        <button class="play" id="play"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="#3a1608" opacity=".14"/><path d="M15 11l16 9-16 9z" fill="#3a1608"/></svg>
+          <span><b id="playT">Play</b><small id="playS">Start a new game on your own island</small></span></button>
+        <div class="row">
+          <button class="btn teal" id="hostB">Host a room</button>
+          <button class="btn" id="joinB">Join with a code</button>
+        </div>
+        <div class="sub" id="hostBox">
+          <div class="code" id="hostCode">-----</div>
+          <p class="hint">Send this code to your friends. Up to 6 people can share one island and one market.</p>
+          <div class="inline"><button class="btn" id="copyB" style="flex:1">Copy code</button><button class="btn" id="newB" style="flex:1">New code</button></div>
+          <button class="btn teal" id="startHost" style="width:100%;margin-top:8px">Start the room</button>
+        </div>
+        <div class="sub" id="joinBox">
+          <div class="inline"><input class="codein" id="joinIn" maxlength="5" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Room code"><button class="btn teal" id="joinGo">Join</button></div>
+          <div class="msg" id="joinMsg" role="alert"></div>
+        </div>
+        <div class="msg" id="netMsg" role="status" style="color:var(--mut)"></div>
+      </div>
+    </div>
+
+    <div class="panel card" id="me">
+      <h2>Your castaway <span style="font:700 13px var(--body);color:var(--mut)" id="saveInfo"></span></h2>
+      <div class="who">
+        <canvas id="pv" width="300" height="420"></canvas>
+        <div class="stats">
+          <div class="stat"><b id="sMoney">$0</b><span>cash</span></div>
+          <div class="stat"><b id="sCaught">0</b><span>things caught</span></div>
+          <div class="stat"><b id="sEarned">$0</b><span>total earned</span></div>
+          <div class="stat"><b id="sTime">0m</b><span>time played</span></div>
+          <div class="stat"><b id="sHome">None</b><span>your home</span></div>
+          <div class="stat"><b id="sDeaths">0</b><span>times in the lava</span></div>
+        </div>
+      </div>
+      <button class="btn edit" id="editB">Edit character</button>
+    </div>
+  </section>
+
+  <div class="foot">
+    <div class="keys"><span><kbd>WASD</kbd> move</span><span><kbd>E</kbd> use</span><span><kbd>Shift</kbd> run</span><span><kbd>Tab</kbd> map</span><span><kbd>C</kbd> character</span></div>
+    <div><span id="fineprint">Your progress saves automatically in this browser.</span> <button id="wipe" type="button">Start over</button></div>
+  </div>
+</main>
+
+<script>
+/* ---------- animated sunset island (2D canvas, low-poly flat shapes) ---------- */
+(function(){
+"use strict";
+var cv=document.getElementById("scene"),g=cv.getContext("2d"),W=0,H=0,DPR=1,reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function mul(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+var rnd=mul(7),clouds=[],birds=[],flies=[],pines=[],facets=[],stars=[];
+function build(){
+  clouds=[];for(var i=0;i<7;i++)clouds.push({x:rnd(),y:.06+rnd()*.3,s:.6+rnd()*.9,v:.004+rnd()*.008,k:rnd()});
+  birds=[];for(var i=0;i<5;i++)birds.push({x:rnd(),y:.14+rnd()*.2,v:.02+rnd()*.02,p:rnd()*6,s:.7+rnd()*.5});
+  flies=[];for(var i=0;i<26;i++)flies.push({x:rnd(),y:.5+rnd()*.35,p:rnd()*6,v:.01+rnd()*.02});
+  stars=[];for(var i=0;i<60;i++)stars.push({x:rnd(),y:rnd()*.35,r:rnd()*1.3+.3,p:rnd()*6});
+  pines=[];for(var i=0;i<26;i++){var t=rnd();pines.push({t:t,h:.7+rnd()*.7,s:rnd()})}
+  facets=[];for(var i=0;i<14;i++)facets.push(rnd());
+}
+build();
+function size(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;g.setTransform(DPR,0,0,DPR,0,0);if(reduce)draw(0)}
+addEventListener("resize",size);size();
+function lerp(a,b,t){return a+(b-a)*t}
+function poly(pts,fill){g.beginPath();g.moveTo(pts[0][0],pts[0][1]);for(var i=1;i<pts.length;i++)g.lineTo(pts[i][0],pts[i][1]);g.closePath();g.fillStyle=fill;g.fill()}
+function hill(x0,x1,base,h,seed,cols,steps){ // jagged low-poly ridge
+  var r=mul(seed),pts=[[x0,base]],n=steps||9;
+  for(var i=0;i<=n;i++){var t=i/n,x=lerp(x0,x1,t),y=base-h*Math.pow(Math.sin(Math.PI*t),.8)*(.55+r()*.45);pts.push([x,y])}
+  pts.push([x1,base]);poly(pts,cols[0]);
+  // facets
+  for(var i=1;i<pts.length-2;i++){poly([pts[i],pts[i+1],[pts[i][0],base],],cols[1]);i++}
+  return pts;
+}
+function draw(t){
+  var hz=H*(W<900?.55:.6),ismall=W<900;
+  // sky
+  var sk=g.createLinearGradient(0,0,0,hz);sk.addColorStop(0,"#2a2150");sk.addColorStop(.38,"#7a3d7a");sk.addColorStop(.7,"#ff7a5c");sk.addColorStop(1,"#ffc27a");
+  g.fillStyle=sk;g.fillRect(0,0,W,hz+2);
+  for(var i=0;i<stars.length;i++){var s=stars[i];g.globalAlpha=.35+.35*Math.sin(t*1.5+s.p);g.fillStyle="#fff";g.fillRect(s.x*W,s.y*hz,s.r,s.r)}g.globalAlpha=1;
+  // sun
+  var sx=W*(ismall?.7:.66),sy=hz*.82,sr=Math.min(W,H)*.1;
+  var gl=g.createRadialGradient(sx,sy,sr*.4,sx,sy,sr*5);gl.addColorStop(0,"rgba(255,230,160,.9)");gl.addColorStop(.25,"rgba(255,170,90,.45)");gl.addColorStop(1,"rgba(255,120,80,0)");
+  g.fillStyle=gl;g.fillRect(0,0,W,hz);
+  g.fillStyle="#ffe7a8";g.beginPath();g.arc(sx,sy,sr,0,7);g.fill();
+  // clouds (flat low-poly slabs)
+  for(var i=0;i<clouds.length;i++){var c=clouds[i],cx=((c.x+t*c.v)%1.3-.15)*W,cy=c.y*hz,w=120*c.s*(W/1200+.5),h=22*c.s;
+    var col=c.k>.5?"rgba(255,196,170,.85)":"rgba(255,158,160,.8)";
+    poly([[cx,cy],[cx+w*.15,cy-h*.9],[cx+w*.4,cy-h*1.3],[cx+w*.65,cy-h*.8],[cx+w*.9,cy-h*.3],[cx+w,cy],[cx+w*.5,cy+h*.35]],col);
+    poly([[cx+w*.2,cy+h*.1],[cx+w*.5,cy+h*.35],[cx+w,cy],[cx+w*.8,cy+h*.05]],"rgba(150,70,120,.35)")}
+  // far mountains
+  hill(-W*.1,W*.5,hz,hz*.2,11,["#8a4a86","#7a3f7a"],7);hill(W*.35,W*1.1,hz,hz*.26,5,["#7a4286","#693878"],8);
+  // sea
+  var sea=g.createLinearGradient(0,hz,0,H);sea.addColorStop(0,"#ff9a78");sea.addColorStop(.12,"#c4607e");sea.addColorStop(.45,"#4a3a8a");sea.addColorStop(1,"#241a52");
+  g.fillStyle=sea;g.fillRect(0,hz,W,H-hz);
+  // sun glitter column
+  for(var i=0;i<22;i++){var yy=hz+4+i*i*.95+i*3,ww=(sr*(.35+i*.11))*(.6+.4*Math.sin(t*2+i*1.7)),xo=Math.sin(t*1.3+i)*6;
+    if(yy>H)break;g.globalAlpha=Math.max(0,.65-i*.025);g.fillStyle="#ffe7b0";g.fillRect(sx-ww/2+xo,yy,ww,2.2+i*.12)}g.globalAlpha=1;
+  // island (left of centre)
+  var ix=W*(ismall?.28:.27),iy=hz+H*.02,iw=Math.min(W*.5,720),ih=Math.min(H*.34,300);
+  // reflection
+  g.save();g.globalAlpha=.22;g.translate(0,iy*2-hz*0+ih*.2);g.scale(1,-.35);g.fillStyle="#2a1850";g.beginPath();g.moveTo(ix-iw*.5,iy);g.lineTo(ix-iw*.1,iy-ih*.9);g.lineTo(ix+iw*.1,iy-ih*.8);g.lineTo(ix+iw*.5,iy);g.fill();g.restore();
+  var pts=hill(ix-iw*.5,ix+iw*.5,iy,ih,21,["#4b3a8c","#3d2e7a"],10);
+  // grass cap lit by the sun
+  var top=[];for(var i=1;i<pts.length-1;i++)top.push([pts[i][0],pts[i][1]]);
+  g.beginPath();g.moveTo(top[0][0],top[0][1]+ih*.08);for(var i=0;i<top.length;i++)g.lineTo(top[i][0],top[i][1]);for(var i=top.length-1;i>=0;i--)g.lineTo(top[i][0],top[i][1]+ih*.12);g.closePath();g.fillStyle="#6f5ab0";g.fill();
+  // pines
+  for(var i=0;i<pines.length;i++){var p=pines[i],k=Math.max(1,Math.min(top.length-1,Math.round(p.t*(top.length-1)))),px=lerp(top[k-1][0],top[k][0],(p.t*(top.length-1))%1||.5),py=lerp(top[k-1][1],top[k][1],(p.t*(top.length-1))%1||.5)+ih*.06,ph=ih*.22*p.h;
+    if(px>ix+iw*.1&&px<ix+iw*.33&&py<iy)continue; // leave room for the cabin
+    var sway=Math.sin(t*1.2+i)*1.2;
+    for(var l=0;l<3;l++){var yy=py-ph*(.28+l*.3),ww=ph*(.34-l*.07);poly([[px-ww+sway*l*.3,yy+ph*.3],[px+ww+sway*l*.3,yy+ph*.3],[px+sway*(l+1)*.35,yy-ph*.28]],l%2?"#3a2a78":"#2f2266")}
+    g.fillStyle="#2a1c52";g.fillRect(px-1.5,py-ph*.1,3,ph*.14)}
+  // cabin with a lit window
+  var cx=ix+iw*.2,cy=iy-ih*.5,cw=ih*.34;
+  poly([[cx,cy],[cx+cw,cy],[cx+cw,cy-cw*.55],[cx,cy-cw*.55]],"#6a4a8e");
+  poly([[cx-cw*.1,cy-cw*.55],[cx+cw*.5,cy-cw*.98],[cx+cw*1.1,cy-cw*.55]],"#c44f5a");
+  g.fillStyle="#ffd27a";g.shadowColor="#ffb04a";g.shadowBlur=16;g.fillRect(cx+cw*.18,cy-cw*.42,cw*.2,cw*.2);g.fillRect(cx+cw*.6,cy-cw*.42,cw*.2,cw*.2);g.shadowBlur=0;
+  poly([[cx+cw*.75,cy-cw*.9],[cx+cw*.88,cy-cw*.9],[cx+cw*.88,cy-cw*1.2],[cx+cw*.75,cy-cw*1.2]],"#4a3a78");
+  for(var i=0;i<3;i++){g.globalAlpha=.4-i*.1;g.fillStyle="#ffd9c0";g.beginPath();g.arc(cx+cw*.82+Math.sin(t+i)*4+i*5,cy-cw*1.3-i*14-((t*10)%8),4+i*2,0,7);g.fill()}g.globalAlpha=1;
+  // lighthouse on the right shoulder with a sweeping beam
+  var lx=ix+iw*.42,ly=iy-ih*.1,lh=ih*.62;
+  poly([[lx-9,ly],[lx+9,ly],[lx+5,ly-lh],[lx-5,ly-lh]],"#e8d7e6");poly([[lx-7,ly-lh*.3],[lx+7.5,ly-lh*.3],[lx+6.2,ly-lh*.5],[lx-6,ly-lh*.5]],"#d1566a");
+  poly([[lx-7,ly-lh],[lx+7,ly-lh],[lx,ly-lh-12]],"#b3485f");g.fillStyle="#ffe9a0";g.shadowColor="#ffd27a";g.shadowBlur=22;g.fillRect(lx-3.5,ly-lh-3,7,6);g.shadowBlur=0;
+  var ang=Math.sin(t*.7)*.5;g.save();g.translate(lx,ly-lh);g.rotate(ang);var bm=g.createLinearGradient(0,0,W*.3,0);bm.addColorStop(0,"rgba(255,240,180,.45)");bm.addColorStop(1,"rgba(255,240,180,0)");g.fillStyle=bm;g.beginPath();g.moveTo(0,0);g.lineTo(W*.3,-26);g.lineTo(W*.3,26);g.fill();g.restore();
+  // dock
+  var dx=ix+iw*.46,dy=iy+ih*.02;
+  g.fillStyle="#7a4a6a";g.fillRect(dx,dy,iw*.26,5);for(var i=0;i<6;i++)g.fillRect(dx+i*iw*.05+4,dy,3,16);
+  g.fillStyle="#ffd27a";g.shadowColor="#ffb04a";g.shadowBlur=14;g.beginPath();g.arc(dx+iw*.26,dy-8,3.5,0,7);g.fill();g.shadowBlur=0;
+  // sailboat bobbing
+  var bx=W*(ismall?.78:.8)+Math.sin(t*.25)*10,by=hz+H*.08+Math.sin(t*1.1)*3,bs=Math.min(W,H)*.06;
+  g.save();g.translate(bx,by);g.rotate(Math.sin(t*1.1)*.04);
+  poly([[-bs*.8,0],[bs*.8,0],[bs*.55,bs*.3],[-bs*.55,bs*.3]],"#4a2a5a");
+  poly([[0,-bs*1.5],[0,-bs*.1],[bs*.7,-bs*.1]],"#ffe0b0");poly([[-.0,-bs*1.35],[0,-bs*.1],[-bs*.55,-bs*.1]],"#ffb98a");
+  g.restore();g.globalAlpha=.25;g.fillStyle="#2a1850";g.fillRect(bx-bs*.6,by+bs*.34,bs*1.2,3);g.globalAlpha=1;
+  // foreground waves
+  for(var l=0;l<3;l++){var y0=H*(.84+l*.06),amp=5+l*3,col=["rgba(60,40,130,.55)","rgba(40,26,100,.7)","rgba(26,16,72,.92)"][l];
+    g.beginPath();g.moveTo(0,H);for(var x=0;x<=W+20;x+=20)g.lineTo(x,y0+Math.sin(x*.012+t*(.8+l*.3)+l*2)*amp+Math.sin(x*.03-t*.6)*amp*.4);g.lineTo(W,H);g.closePath();g.fillStyle=col;g.fill()}
+  // birds
+  g.strokeStyle="#4a2a5a";g.lineWidth=2;g.lineCap="round";
+  for(var i=0;i<birds.length;i++){var b=birds[i],bx2=((b.x+t*b.v*.12)%1.2-.1)*W,by2=b.y*hz+Math.sin(t*.8+b.p)*8,f=Math.sin(t*7+b.p)*5*b.s;
+    g.beginPath();g.moveTo(bx2-10*b.s,by2-f);g.quadraticCurveTo(bx2-4*b.s,by2-f*.2-3,bx2,by2);g.quadraticCurveTo(bx2+4*b.s,by2-f*.2-3,bx2+10*b.s,by2-f);g.stroke()}
+  // fireflies drifting up from the island
+  for(var i=0;i<flies.length;i++){var f2=flies[i],fx=(ix-iw*.4+f2.x*iw*.9)+Math.sin(t*.6+f2.p)*14,fy=iy-ih*.1-((f2.y*60+t*f2.v*500)%(ih*.9));
+    g.globalAlpha=.5+.5*Math.sin(t*3+f2.p);g.fillStyle="#ffe9a0";g.shadowColor="#ffd27a";g.shadowBlur=8;g.beginPath();g.arc(fx,fy,1.8,0,7);g.fill()}
+  g.shadowBlur=0;g.globalAlpha=1;
+}
+var t0=performance.now(),last=0;
+function frame(now){requestAnimationFrame(frame);if(document.hidden||now-last<33)return;last=now;draw((now-t0)/1000)}
+if(!reduce)requestAnimationFrame(frame);
+})();
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import {makeCharacter} from "./world/character.js";
+import {loadLook,openCustomizer} from "./world/customize.js";
+
+const $=id=>document.getElementById(id),SAVE="sidehustle.save.v2",POS="sidehustle.pos",ROOM_LEN=5,ALPHA="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const toast=t=>{const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2400)};
+
+/* ---- save info ---- */
+function readSave(){try{const s=JSON.parse(localStorage.getItem(SAVE)||"null");return s&&s.v===2?s:null}catch(e){return null}}
+const fmt=n=>"$"+Math.round(n||0).toLocaleString();
+function ago(t){if(!t)return"";const m=Math.max(0,(Date.now()-t)/60000);if(m<1)return"just now";if(m<60)return Math.round(m)+" min ago";const h=m/60;if(h<24)return Math.round(h)+" h ago";return Math.round(h/24)+" days ago"}
+function dur(s){s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+"h "+m+"m":m+"m"}
+function paintSave(){
+  const s=readSave();
+  if(s){
+    $("playT").textContent="Continue";
+    $("playS").textContent=fmt(s.money)+" in your pocket, saved "+ago(s.t)+". You'll wake up where you left off.";
+    $("sMoney").textContent=fmt(s.money);$("sCaught").textContent=(s.caught|0).toLocaleString();$("sEarned").textContent=fmt(s.earned);
+    $("sTime").textContent=dur(s.playSeconds);$("sDeaths").textContent=(s.deaths|0).toLocaleString();
+    $("sHome").textContent=s.myPlot==null?"None yet":"Plot "+(s.myPlot+1);
+    $("saveInfo").textContent="saved "+ago(s.t);$("wipe").hidden=false;
+  }else{
+    $("playT").textContent="Play";$("playS").textContent="Start a new game on your own island";
+    for(const id of ["sMoney","sEarned"])$(id).textContent="$0";for(const id of ["sCaught","sDeaths"])$(id).textContent="0";
+    $("sTime").textContent="0m";$("sHome").textContent="None yet";$("saveInfo").textContent="new game";$("wipe").hidden=true;
+  }
+}
+paintSave();
+
+/* ---- character preview ---- */
+let pr=null;
+function startPreview(){
+  try{
+    const cv=$("pv"),r=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});r.setPixelRatio(Math.min(2,devicePixelRatio||1));r.setSize(150,210,false);r.outputColorSpace=THREE.SRGBColorSpace;
+    const sc=new THREE.Scene();sc.add(new THREE.HemisphereLight(0xfff0e0,0x9a7a9a,2.2));const dl=new THREE.DirectionalLight(0xffd9a8,2.6);dl.position.set(2,4,4);sc.add(dl);
+    const cam=new THREE.PerspectiveCamera(30,150/210,.1,30);cam.position.set(0,1.15,4.6);cam.lookAt(0,1.0,0);
+    let ch=null,t=0;
+    const rebuild=()=>{if(ch)sc.remove(ch);ch=makeCharacter(loadLook());sc.add(ch)};
+    rebuild();pr={rebuild};
+    const loop=()=>{requestAnimationFrame(loop);if(document.hidden)return;t+=.016;ch.rotation.y=Math.sin(t*.8)*.6+.15;ch.userData.head&&(ch.userData.head.rotation.z=Math.sin(t*1.3)*.05);r.render(sc,cam)};loop();
+  }catch(e){$("pv").style.display="none";console.warn("preview off",e)}
+}
+startPreview();
+$("editB").onclick=()=>openCustomizer(()=>{pr&&pr.rebuild();toast("Character saved")});
+
+/* ---- play / rooms ---- */
+const go=(q)=>{location.href="world.html"+(q||"")};
+$("play").onclick=()=>go("");
+function code(){let s="";const a=new Uint32Array(ROOM_LEN);crypto.getRandomValues(a);for(const v of a)s+=ALPHA[v%ALPHA.length];return s}
+let hostC=code();
+const show=id=>{for(const b of ["hostBox","joinBox"])$(b).classList.toggle("on",b===id&&!$(b).classList.contains("on"))};
+$("hostB").onclick=()=>{$("hostCode").textContent=hostC;show("hostBox")};
+$("joinB").onclick=()=>{show("joinBox");setTimeout(()=>$("joinIn").focus(),30)};
+$("newB").onclick=()=>{hostC=code();$("hostCode").textContent=hostC};
+$("copyB").onclick=async()=>{try{await navigator.clipboard.writeText(hostC);toast("Code copied: "+hostC)}catch(e){toast("Code: "+hostC)}};
+$("startHost").onclick=()=>go("?room="+hostC+"&host=1");
+const jin=$("joinIn");
+jin.oninput=()=>{jin.value=jin.value.toUpperCase().replace(/[^A-Z2-9]/g,"").slice(0,ROOM_LEN);$("joinMsg").textContent=""};
+const tryJoin=()=>{const c=jin.value.trim().toUpperCase();if(c.length!==ROOM_LEN){$("joinMsg").textContent="Room codes are "+ROOM_LEN+" letters or numbers.";return}go("?room="+c)};
+$("joinGo").onclick=tryJoin;jin.onkeydown=e=>{if(e.key==="Enter")tryJoin()};
+$("wipe").onclick=()=>{if(confirm("Delete your saved island, money and position and start over? Your character look stays.")){try{localStorage.removeItem(SAVE);localStorage.removeItem(POS)}catch(e){}paintSave();toast("Fresh start")}};
+// deep link: index.html?join=ABCDE opens the join box
+{const j=new URLSearchParams(location.search).get("join");if(j){jin.value=j.toUpperCase().replace(/[^A-Z2-9]/g,"").slice(0,ROOM_LEN);show("joinBox")}}
+
+/* ---- account chip: only exists when the site is served by the Worker ---- */
+(async()=>{
+  const box=$("acct");
+  try{
+    const r=await fetch("/api/me",{credentials:"same-origin"});
+    if((r.headers.get("content-type")||"").indexOf("json")<0)throw 0;
+    const j=await r.json();box.hidden=false;
+    if(j.profile){box.innerHTML='<span class="dot"></span><span>'+esc(j.profile.username)+'</span>'+(j.profile.is_admin?'<a href="admin.html">Admin</a>':'')+'<button id="so" type="button">Sign out</button>';
+      $("so").onclick=async()=>{try{await fetch("/api/logout",{method:"POST",credentials:"same-origin"})}catch(e){}location.href="login.html?next=index.html"}}
+    else box.innerHTML='<span class="dot off"></span><span>Not signed in</span><a href="login.html?next=index.html">Sign in</a>';
+  }catch(e){box.hidden=false;box.innerHTML='<span class="dot off"></span><span>Playing offline</span>';$("netMsg").textContent="Room codes need the online version of the game. Solo play works anywhere.";}
+})();
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+addEventListener("pageshow",paintSave);addEventListener("storage",paintSave);
+</script>
+</body></html>

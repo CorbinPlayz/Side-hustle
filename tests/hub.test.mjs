@@ -53,4 +53,10 @@ await throws(Promise.resolve().then(()=>hub.adminSetStatus(adm.profile.id,adm.pr
 const inv=new HubCore(new DatabaseSync(":memory:").constructor===DatabaseSync?(()=>{const s=new DatabaseSync(":memory:");return {all:(q,...p)=>s.prepare(q).all(...p),run:(q,...p)=>{s.prepare(q).run(...p)}}})():null,{signupCode:"letmein"});
 await throws(inv.register("player1","password1","nope"),403,"wrong invite code refused");
 ok((await inv.register("player1","password1","letmein")).profile.status==="pending","right invite code accepted");
+// Dual Arenas switch: hidden by default, only the admin with the right code can flip it
+ok(hub.arenasOn()===false,"arenas hidden by default");
+await throws(Promise.resolve().then(()=>hub.adminSetArenas(adm.profile.id,true,"0000")),403,"wrong arenas code refused");
+await throws(Promise.resolve().then(()=>hub.adminSetArenas(imp.profile.id,true,"10242010")),404,"non-admin cannot flip arenas");
+hub.adminSetArenas(adm.profile.id,true,"10242010");ok(hub.arenasOn()===true,"right code turns arenas on");
+hub.adminSetArenas(adm.profile.id,false,"10242010");ok(hub.arenasOn()===false,"and off again");
 console.log(fails?fails+" FAILED":"all hub tests passed");process.exit(fails?1:0);
