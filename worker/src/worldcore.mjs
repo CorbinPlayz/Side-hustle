@@ -17,7 +17,7 @@ export class WorldCore{
     if(this.players.size>=MAX_PLAYERS){conn.send({t:"error",error:"This island is full (6 players)."});conn.close();return false}
     const p={id:conn.id,uid:conn.uid,name:conn.name,look:conn.look||{},x:0,y:0,z:0,yaw:0,tool:3,conn};
     this.players.set(conn.id,p);
-    conn.send({t:"welcome",you:conn.id,market:this.marketState(),players:this.publicPlayers()});
+    conn.send({t:"welcome",you:conn.id,uid:conn.uid,market:this.marketState(),players:this.publicPlayers()});
     this.broadcast({t:"joined",p:this.pub(p)},conn.id);return true;
   }
   leave(id){
@@ -28,10 +28,19 @@ export class WorldCore{
   }
   pub(p){return {id:p.id,name:p.name,look:p.look,x:p.x,y:p.y,z:p.z,yaw:p.yaw,tool:p.tool}}
   publicPlayers(){return [...this.players.values()].map(p=>this.pub(p))}
-  marketState(){const e=this.eco;return {mult:e.mult,prev:e.prev,supply:e.supply,event:e.event,house:{index:e.house.index,owners:e.house.owners,npcs:e.house.npcs}}}
+  marketState(){const e=this.eco,names={};for(const p of this.players.values())names["p:"+p.uid]=p.name;
+    return {mult:e.mult,prev:e.prev,supply:e.supply,event:e.event,names,house:{index:e.house.index,owners:e.house.owners,npcs:e.house.npcs}}}
   /** Messages from a player: pos (movement), sell (items + place), plot (claim a plot). Returns nothing; replies go over the connection. */
   message(id,m){
     const p=this.players.get(id);if(!p||!m||typeof m!=="object")return;
+    if(m.t==="hello"){ // the player's look: small integers only
+      const look={};if(m.look&&typeof m.look==="object")for(const k of Object.keys(m.look).slice(0,16)){const v=m.look[k];if(Number.isInteger(v)&&v>=0&&v<40)look[k]=v}
+      p.look=look;this.broadcast({t:"look",id:p.id,look},p.id);return}
+    if(m.t==="supply"){ // a player sold things: it moves the shared market and counts as island earnings
+      const counts=m.counts&&typeof m.counts==="object"?m.counts:{};let any=false;
+      for(const k of Object.keys(counts).slice(0,40)){if(!byId[k])continue;const n=Math.max(0,Math.min(40,+counts[k]||0));this.eco.supply[k]+=n*.07;any=true}
+      this.eco.earned+=Math.max(0,Math.min(8000,+m.total||0));
+      if(any)this.broadcast({t:"market",market:this.marketState()});return}
     if(m.t==="pos"){p.x=+m.x||0;p.y=+m.y||0;p.z=+m.z||0;p.yaw=+m.yaw||0;p.tool=m.tool|0}
     else if(m.t==="sell"){
       // client sends [{id,w}] and where it sells. The server prices it, so nobody can invent a price.
@@ -46,7 +55,7 @@ export class WorldCore{
       p.conn.send({t:"plotPrice",plot:i,price:this.eco.plotPrice(i)}); // the client pays from its own wallet then confirms with plotBuy
     }
     else if(m.t==="plotBuy"){
-      const i=m.plot|0,h=this.eco.house;if(i<0||i>=PLOT_COUNT||h.owners[i])return;
+      const i=m.plot|0,h=this.eco.house;if(i<0||i>=PLOT_COUNT||h.owners[i]||Object.values(h.owners).includes("p:"+p.uid)){p.conn.send({t:"plotDenied",plot:i,market:this.marketState()});return}
       h.owners[i]="p:"+p.uid;this.broadcast({t:"market",market:this.marketState()});
     }
   }

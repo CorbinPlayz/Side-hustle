@@ -18,6 +18,7 @@ import {Pickups} from "./pickups.js";
 import {Town,PLOT} from "./town.js";
 import {Builder} from "./build.js";
 import {POIs} from "./poi.js";
+import {joinRoom} from "./net.js";
 import {openCustomizer,loadLook} from "./customize.js";
 
 const canvas=document.getElementById("c");
@@ -237,6 +238,10 @@ function interact(){
 }
 
 let last=performance.now(),t=0,frames=0;
+// shared room: ?room=CODE (set from the home page). Falls back to solo play if the room server isn't there.
+const ROOM=(q.get("room")||"").toUpperCase();
+const net=/^[A-Z2-9]{5}$/.test(ROOM)?joinRoom({code:ROOM,host:q.has("host"),eco,town,scene,hud,look:LOOK,heightAt}):null;
+window.__net=net;
 function frame(now){
   const dt=FIXED?1/30:Math.min(.05,(now-last)/1000);last=now;t+=dt;
   uniforms.uTime.value=t;water.material.uniforms.uTime.value=t;
@@ -282,6 +287,7 @@ function frame(now){
     else if(sp){const o=eco.house.owners[sp.id];pr=!o?(eco.myPlot==null?`[E] Buy this plot for $${eco.plotPrice(sp.id).toLocaleString()}`:"For sale"):o==="me"?"Your plot. Press B to build":null}
   }
   hud.prompt(pr);
+  if(net)net.update(dt,player,jobs.tool);
   refreshMoney();
   placeSun(camera.position);
   if(post)post.render(scene,camera);else renderer.render(scene,camera);

@@ -6,7 +6,7 @@ import path from "node:path";
 const here=path.dirname(fileURLToPath(import.meta.url)),src=path.join(here,"../worker/src");
 mkdirSync(path.join(here,".tmp"),{recursive:true});
 let code=readFileSync(path.join(src,"index.mjs"),"utf8").replace('import {DurableObject} from "cloudflare:workers";','class DurableObject{constructor(c,e){this.ctx=c;this.env=e}}');
-code=code.replace(/\.\/(hubcore|matchcore)\.mjs/g,"../../worker/src/$1.mjs").replace("../../public/js/data.js","../../public/js/data.js");
+code=code.replace(/\.\/(hubcore|matchcore|worldcore)\.mjs/g,"../../worker/src/$1.mjs").replace("../../public/js/data.js","../../public/js/data.js");
 writeFileSync(path.join(here,".tmp/index.mjs"),code);
 const mod=await import(path.join(here,".tmp/index.mjs"));
 let fails=0;const ok=(c,m)=>{if(!c){fails++;console.log("FAIL",m)}else console.log("ok  ",m)};

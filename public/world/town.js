@@ -104,9 +104,9 @@ export class Town{
       if(!owner)this.setSign(v,[{t:"FOR SALE",y:52,size:42},{t:"$"+this.eco.plotPrice(p.id).toLocaleString(),y:106,size:50}]);
       else if(owner==="me")this.setSign(v,[{t:"YOUR PLOT",y:78,size:38}],"#2f6f8f");
       else{
-        const npc=h.npcs.find(n=>"npc:"+n.id===owner);
-        this.setSign(v,[{t:npc?npc.name:"Neighbour",y:78,size:44}],"#6a3a2a");
-        v.house=cabin(npc?npc.color:0xe5654a);v.house.position.set(0,p.y,0);v.house.rotation.y=Math.atan2(this.stallPos.x-p.x,this.stallPos.z-p.z); v.group.add(v.house); // door faces the market
+        const npc=h.npcs.find(n=>"npc:"+n.id===owner),pl=owner.startsWith("pl:")?owner.slice(3):null;
+        this.setSign(v,[{t:pl||(npc?npc.name:"Neighbour"),y:78,size:44}],pl?"#2f6f8f":"#6a3a2a");
+        v.house=cabin(npc?npc.color:pl?0x4aa8c8:0xe5654a);v.house.position.set(0,p.y,0);v.house.rotation.y=Math.atan2(this.stallPos.x-p.x,this.stallPos.z-p.z); v.group.add(v.house); // door faces the market
       }
     }
     // neighbours

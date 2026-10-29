@@ -6,6 +6,7 @@
 import {DurableObject} from "cloudflare:workers";
 import {HubCore,HubError} from "./hubcore.mjs";
 import {MatchCore} from "./matchcore.mjs";
+import {WorldCore} from "./worldcore.mjs";
 import Data from "../../public/js/data.js";
 
 const COOKIE="duel_session";
@@ -89,6 +90,33 @@ export class Match extends DurableObject{
   }
 }
 
+/* ---------- World: one shared island per room code (up to 6 players). ---------- */
+export class World extends DurableObject{
+  constructor(ctx,env){super(ctx,env);this.nextId=1;this.timer=null;this.last=0;this.core=new WorldCore()}
+  async fetch(request){
+    if(request.headers.get("Upgrade")!=="websocket")return new Response("Expected a WebSocket",{status:426});
+    const h=request.headers,pair=new WebSocketPair(),client=pair[0],server=pair[1];
+    server.accept();
+    const conn={id:this.nextId++,uid:h.get("x-uid"),name:h.get("x-name")||"Player",look:{},
+      send:o=>{try{server.send(JSON.stringify(o))}catch(e){}},close:()=>{try{server.close(1000,"closed")}catch(e){}}};
+    server.addEventListener("message",ev=>{
+      if(typeof ev.data!=="string"||ev.data.length>1500)return;
+      let m;try{m=JSON.parse(ev.data)}catch(e){return}
+      this.core.message(conn.id,m);
+    });
+    const gone=()=>{this.core.leave(conn.id);this.ensureTimer()};
+    server.addEventListener("close",gone);server.addEventListener("error",gone);
+    const ok=this.core.join(conn);
+    this.ensureTimer();
+    return new Response(null,{status:101,webSocket:client});
+  }
+  ensureTimer(){
+    const need=this.core.count>0;
+    if(need&&!this.timer){this.last=Date.now();this.timer=setInterval(()=>{const n=Date.now();this.core.tick(Math.min(1,(n-this.last)/1000));this.last=n},66)}
+    else if(!need&&this.timer){clearInterval(this.timer);this.timer=null}
+  }
+}
+
 /* ---------- Router ---------- */
 async function readJson(req){try{return await req.json()}catch(e){return {}}}
 function reply(r){return r.ok?json(r.data):json({error:r.error},r.status||400)}
@@ -141,6 +169,18 @@ export default {
     if(ARENA_PAGES.has(path)||(path.startsWith("/ws/")&&!path.startsWith("/ws/world/"))){
       const a=await hub(env,"arenasOn");
       if(!a.ok||!a.data)return new Response("Not found",{status:404,headers:SECURITY});
+    }
+    if(path.startsWith("/ws/world/")){
+      if(request.headers.get("Upgrade")!=="websocket")return new Response("Expected a WebSocket",{status:426});
+      const o=request.headers.get("Origin");
+      if(o&&o!==url.origin)return new Response("Bad origin",{status:403});
+      const me=await who();
+      if(!me||me.status!=="approved")return new Response("Not allowed",{status:403});
+      const code=path.slice(10).toUpperCase();
+      if(!/^[A-Z2-9]{5}$/.test(code))return new Response("Bad code",{status:400});
+      const stub=env.WORLD.get(env.WORLD.idFromName("world-"+code));
+      const h=new Headers(request.headers);h.set("x-uid",String(me.id));h.set("x-name",me.username);
+      return stub.fetch(new Request(request,{headers:h}));
     }
     if(path.startsWith("/ws/")){
       if(request.headers.get("Upgrade")!=="websocket")return new Response("Expected a WebSocket",{status:426});

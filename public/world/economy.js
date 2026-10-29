@@ -108,6 +108,7 @@ export class Economy{
     const ev=[];this.timer+=dt;this.playSeconds+=dt;
     for(const k of ["tonic","satchel"])if(this.perk[k]>0)this.perk[k]=Math.max(0,this.perk[k]-dt);
     this.till=Math.min(this.homeRate*25,this.till+this.homeRate*dt/60);
+    if(this.net)return ev; // in a shared room the server runs the market, so nothing below happens here
     for(const f of ALL)this.supply[f.id]=Math.max(0,this.supply[f.id]-dt*.008);
     if(this.timer<30)return ev;
     this.timer=0;const n=this.house.npcs.length;
@@ -188,7 +189,7 @@ export class Economy{
     let total=0;const counts={};
     for(const f of this.bag){total+=this.value(f,loc);counts[f.id]=(counts[f.id]||0)+1}
     for(const id in counts)this.supply[id]+=counts[id]*.07; // flooding the market pushes the price down
-    this.money+=total;this.earned+=total;this.recentSale=total;this.bag=[];this.save();return total;
+    this.money+=total;this.earned+=total;this.recentSale=total;this.bag=[];this.save();if(this.net)this.net.sold(counts,total);return total;
   }
   toolCost(id){const t=TOOLS.find(x=>x.id===id);return this.tools[id]?null:t.cost}
   /** Falling in lava: lose a fifth of your money and everything in the bag. */
@@ -199,7 +200,23 @@ export class Economy{
   buy(id){const c=this.upgradeCost(id);if(c==null||this.money<c||!this.canUpgrade(id))return false;this.money-=c;this.up[id]++;this.save();return true}
   buyPlot(id){
     if(this.myPlot!=null||this.house.owners[id])return false;const c=this.plotPrice(id);if(this.money<c)return false;
-    this.money-=c;this.myPlot=id;this.house.owners[id]="me";this.save();return true;
+    this.money-=c;this.myPlot=id;this.house.owners[id]="me";this.save();if(this.net)this.net.plot(id);return true;
+  }
+  /** Take the shared market from the room server (prices, supply, event, housing, neighbours). My own plot stays "me". */
+  applyMarket(m,myKey){
+    if(!m)return;
+    for(const id in (m.mult||{}))if(byId[id]){this.mult[id]=m.mult[id];this.prev[id]=(m.prev||{})[id]??m.mult[id]}
+    for(const id in (m.supply||{}))if(byId[id])this.supply[id]=m.supply[id];
+    this.event=m.event||null;
+    if(m.house){
+      this.house.index=m.house.index;
+      const owners={};for(const k in (m.house.owners||{})){const v=m.house.owners[k];owners[k]=v===myKey?"me":(v.startsWith("p:")?"pl:"+((m.names||{})[v]||"Player"):v)}
+      // a plot I bought but the server doesn't know about yet stays mine
+      if(this.myPlot!=null&&!Object.values(owners).includes("me")&&!owners[this.myPlot])owners[this.myPlot]="me";
+      this.house.owners=owners;
+      const old=new Map(this.house.npcs.map(n=>[n.id,n]));
+      this.house.npcs=(m.house.npcs||[]).map(n=>{const o=old.get(n.id)||{};const c=Object.assign(o,n);if(!c.role)this.giveRole(c);else this.giveRole(c);return c});
+    }
   }
   save(){try{localStorage.setItem(KEY,JSON.stringify({v:2,t:Date.now(),money:this.money,event:this.event,nextEvent:this.nextEvent,bag:this.bag,tools:this.tools,up:this.up,caught:this.caught,earned:this.earned,house:this.house,pieces:this.pieces,myPlot:this.myPlot,stash:this.stash,till:this.till,perk:this.perk,deaths:this.deaths,playSeconds:this.playSeconds,mult:this.mult,supply:this.supply}));return true}catch(e){return false}}
   load(){try{
